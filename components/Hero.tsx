@@ -30,15 +30,6 @@ export default function Hero() {
         </button>
       </div>
 
-      {/* Decorative Dashboard Element */}
-      <div className="mt-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent z-10" />
-        <div className="rounded-2xl border border-gray-200 bg-gray-50/50 p-4 shadow-2xl overflow-hidden">
-          <div className="h-64 md:h-96 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-xl">
-             <p className="text-gray-400 font-medium">Dashboard Preview Area</p>
-          </div>
-        </div>
-      </div>
     </section>
   );
 }

@@ -1,72 +1,97 @@
-import { NextResponse } from 'next/server';
-import { SignJWT } from 'jose';
-import { connectDB } from '@/lib/db';
-import { otpStore } from '../signup/route'; 
-import User from '@/models/User';
+export const runtime = "nodejs";
+import { NextResponse } from "next/server";
+import { connectDB } from "@/lib/db";
+import Otp from "@/models/Otp";
+import User from "@/models/User";
+import { adminAuth } from "@/lib/firebase-admin";
 
 export async function POST(req: Request) {
-    try {
-        const { email, otp } = await req.json();
+  try {
+    await connectDB();
 
-        // 1. Validate OTP from memory
-        const record = otpStore.get(email);
-        if (!record || record.otp !== otp || Date.now() > record.expires) {
-            return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
-        }
+    const { email, otp, idToken } = await req.json();
 
-        // 2. Connect to Database
-        await connectDB();
-
-        // 3. Create User in DB
-        // We use findOneAndUpdate with 'upsert' to prevent duplicate errors 
-        // if a user retries the verification.
-        const user = await User.findOneAndUpdate(
-            { email: email },
-            { 
-                email: email,
-                dob: record.data.dob,
-                age: record.data.age,
-                gender: record.data.gender,
-                city: record.data.city,
-                pincode: record.data.pincode
-            },
-            { upsert: true, new: true }
-        );
-
-        // 4. Create JWT Token
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret');
-        const token = await new SignJWT({ 
-            userId: user._id.toString(),
-            email: user.email 
-        })
-            .setProtectedHeader({ alg: 'HS256' })
-            .setIssuedAt()
-            .setExpirationTime('7d')
-            .sign(secret);
-
-        // 5. Cleanup memory
-        otpStore.delete(email);
-
-        // 6. Set Cookie Response
-        const response = NextResponse.json({ 
-            success: true, 
-            message: "Account verified and saved!" 
-        }, { status: 200 });
-
-        response.cookies.set({
-            name: 'auth_token',
-            value: token,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            path: '/',
-        });
-
-        return response;
-
-    } catch (error: any) {
-        console.error("❌ Verification Error:", error);
-        return NextResponse.json({ error: "Failed to create account" }, { status: 500 });
+    if (!email || !otp) {
+      return NextResponse.json(
+        { error: "Email and OTP are required" },
+        { status: 400 }
+      );
     }
+
+    const storedOtp = await Otp.findOne({ email });
+
+    if (!storedOtp) {
+      return NextResponse.json(
+        { error: "No OTP found" },
+        { status: 400 }
+      );
+    }
+
+    if (storedOtp.expires < new Date()) {
+      await Otp.deleteMany({ email });
+      return NextResponse.json(
+        { error: "OTP expired" },
+        { status: 400 }
+      );
+    }
+
+    if (storedOtp.otp !== otp) {
+      return NextResponse.json(
+        { error: "Invalid OTP" },
+        { status: 400 }
+      );
+    }
+
+    let user;
+
+    if (storedOtp.type === "signup") {
+      const existingUser = await User.findOne({ email });
+
+      if (existingUser) {
+        user = existingUser;
+      } else {
+        user = await User.create({
+          name: email.split("@")[0],
+          email,
+          isVerified: true,
+        });
+      }
+    } else {
+      user = await User.findOne({ email });
+
+      if (!user) {
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Delete OTP after success
+    await Otp.deleteMany({ email });
+
+
+    const response = NextResponse.json({
+      success: true,
+      message: "Verification successful",
+    });
+    const customToken = await adminAuth.createCustomToken(user._id.toString())
+    // 🔥 Store Firebase ID token in HTTP-only cookie
+    response.cookies.set("authToken", customToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60, // 1 hour (Firebase ID token expiry)
+    });
+
+    return response;
+
+  } catch (error) {
+    console.error("VERIFY ERROR:", error);
+    return NextResponse.json(
+      { error: "Verification failed" },
+      { status: 500 }
+    );
+  }
 }

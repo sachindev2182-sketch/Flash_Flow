@@ -1,187 +1,304 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
+import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Github } from "lucide-react";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider, githubProvider } from "@/lib/firebase";
 
 export default function SignupPage() {
-    const router = useRouter();
-    const [step, setStep] = useState(1); 
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
-    
-    // OTP Logic
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [step, setStep] = useState(1);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    const [formData, setFormData] = useState({
-        email: "", dob: "", age: 0, gender: "", state: "", city: "", pincode: ""
-    });
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const dateValue = e.target.value;
-        if (dateValue) {
-            const birthDate = new Date(dateValue);
-            const today = new Date();
-            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                calculatedAge--;
-            }
-            setFormData({ ...formData, dob: dateValue, age: calculatedAge >= 0 ? calculatedAge : 0 });
-        }
-    };
+  const [formData, setFormData] = useState({
+    email: "",
+    name: "",
+  });
 
-    const handleOtpChange = (value: string, index: number) => {
-        if (isNaN(Number(value))) return;
-        const newOtp = [...otp];
-        newOtp[index] = value.substring(value.length - 1);
-        setOtp(newOtp);
+  const handleOtpChange = (value: string, index: number) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+  };
 
-        if (value && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
-    const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-        }
-    };
+  const handleInitialSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const handleInitialSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
-        try {
-            const res = await fetch('/api/auth/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-            setStep(2); 
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    const handleVerifyOtp = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
-        const otpCode = otp.join('');
-        try {
-            const res = await fetch('/api/auth/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: formData.email, otp: otpCode }),
-            });
-            if (!res.ok) throw new Error("Verification failed. Please check the code.");
-            router.push('/dashboard');
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-    return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6">
-            <div className="w-full max-w-[420px]">
-                {step === 1 ? (
-                    <>
-                        <div className="mb-8 text-center">
-                            <h1 className="text-[32px] font-bold tracking-tight text-[#0d0c22] mb-3">Sign up</h1>
-                            <p className="text-[#6e6d7a] mb-8">Create your account to start tracking your finances.</p>
-                            
-                            {/* GOOGLE BUTTON ADDED HERE */}
-                            <button 
-                                type="button"
-                                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 border border-[#e7e7e9] rounded-full font-bold text-[#0d0c22] hover:bg-gray-50 transition-all mb-6"
-                            >
-                                <Image src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" width={20} height={20} />
-                                Continue with Google
-                            </button>
+      setStep(2);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="h-[1px] bg-[#e7e7e9] flex-1"></div>
-                                <span className="text-[#6e6d7a] text-sm">or</span>
-                                <div className="h-[1px] bg-[#e7e7e9] flex-1"></div>
-                            </div>
-                        </div>
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-                        <form className="space-y-6" onSubmit={handleInitialSubmit}>
-                            <div>
-                                <label className="block text-sm font-bold text-[#0d0c22] mb-2">Email Address</label>
-                                <input type="email" required placeholder="Enter email" className="w-full px-4 py-3.5 bg-white border border-[#e7e7e9] rounded-2xl outline-none focus:border-black transition-all" onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <input type="date" required onChange={handleDateChange} className="w-full px-4 py-3 border border-[#e7e7e9] rounded-2xl outline-none focus:border-black" />
-                                <select required className="w-full px-4 py-3 border border-[#e7e7e9] rounded-2xl outline-none focus:border-black appearance-none" onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
-                                    <option value="">Gender</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <input type="text" placeholder="City" className="w-full px-4 py-3 border border-[#e7e7e9] rounded-2xl outline-none focus:border-black" onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
-                                <input type="text" placeholder="Pincode" className="w-full px-4 py-3 border border-[#e7e7e9] rounded-2xl outline-none focus:border-black" onChange={(e) => setFormData({ ...formData, pincode: e.target.value })} />
-                            </div>
-                            
-                            {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
+    const otpCode = otp.join("");
 
-                            <button type="submit" disabled={loading} className="w-full py-4 bg-[#0d0c22] text-white rounded-full font-bold shadow-lg active:scale-95 disabled:bg-gray-400">
-                                {loading ? "Please wait..." : "Continue"}
-                            </button>
-                        </form>
-                    </>
-                ) : (
-                    <div className="text-center animate-in fade-in duration-500">
-                        <Image src="/Finance_logo.png" alt="Logo" width={48} height={48} className="mx-auto mb-8" />
-                        <h1 className="text-[32px] font-bold text-[#0d0c22] mb-4">Create your account</h1>
-                        <p className="text-[#6e6d7a] mb-8">
-                            We've sent you a passcode.<br />
-                            Please check your inbox at <span className="text-black font-semibold">{formData.email.replace(/(.{2})(.*)(?=@)/, "$1***")}</span>
-                        </p>
+    try {
+      const res = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, otp: otpCode }),
+      });
 
-                        <form onSubmit={handleVerifyOtp}>
-                            <div className="flex justify-center gap-2 mb-8">
-                                {otp.map((data, index) => (
-                                    <input
-                                        key={index}
-                                        type="text"
-                                        maxLength={1}
-                                        ref={(el) => { inputRefs.current[index] = el; }}
-                                        value={data}
-                                        onChange={(e) => handleOtpChange(e.target.value, index)}
-                                        onKeyDown={(e) => handleKeyDown(e, index)}
-                                        className="w-14 h-16 text-center text-2xl font-bold border border-[#e7e7e9] rounded-xl focus:border-black outline-none transition-all"
-                                    />
-                                ))}
-                            </div>
-                            
-                            {error && <p className="text-red-500 mb-4 font-medium">{error}</p>}
+      if (!res.ok)
+        throw new Error("Verification failed. Please check the code.");
 
-                            <button type="button" className="text-[#6e6d7a] text-sm hover:text-black mb-8 block mx-auto underline">
-                                Resend code
-                            </button>
+      const me = await fetch("/api/auth/me");
+      const userData = await me.json();
 
-                            <button type="submit" disabled={loading} className="w-full py-4 bg-[#0d0c22] text-white rounded-full font-bold shadow-lg">
-                                {loading ? "Verifying..." : "Verify & Sign Up"}
-                            </button>
-                        </form>
-                    </div>
-                )}
-                
-                <p className="mt-8 text-center text-sm text-[#6e6d7a]">
-                    Already have an account? <Link href="/login" className="text-black font-semibold underline">Sign in</Link>
-                </p>
-            </div>
+      if (userData.user.role === "admin") {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const token = await result.user.getIdToken();
+
+      const res = await fetch("/api/auth/firebase-login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await res.json();
+
+      if (data.role === "admin") {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      setError("Google login failed");
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, githubProvider);
+      const token = await result.user.getIdToken();
+
+      const res = await fetch("/api/auth/firebase-login", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await res.json();
+
+      if (data.role === "admin") {
+        window.location.href = "/admin";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (error) {
+      console.error("GitHub Login Error:", error);
+      setError("GitHub login failed");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#e8f0f7] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#fdfdfe] to-[#d6e4f0] flex flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+      <div className="w-full sm:max-w-[460px] bg-white p-6 sm:p-10 md:p-12 rounded-[30px] sm:rounded-[45px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)]">
+        {/* BRANDING LOGO */}
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <div className="bg-black rounded-full p-2 shadow-lg">
+            <Image
+              src="/Finance_logo.png"
+              alt="Finance Logo"
+              width={32}
+              height={32}
+              className="invert"
+            />
+          </div>
         </div>
-    );
+
+        <div className="text-center mb-8 sm:mb-10">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0d0c22] tracking-tight mb-2 sm:mb-3">
+            Create account
+          </h1>
+          <p className="text-[#6e6d7a] text-sm sm:text-[15px] font-medium">
+            Join thousands of smart savers today
+          </p>
+        </div>
+
+        {step === 1 ? (
+          <div className="animate-in fade-in duration-700">
+            {/* SOCIAL BUTTONS */}
+            <div className="flex flex-col gap-3 mb-6 sm:mb-8">
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full flex items-center justify-center gap-3 py-3.5 sm:py-4 border border-transparent rounded-[18px] font-bold text-white bg-[#4285f4] hover:bg-[#357ae8] transition-all shadow-md text-sm sm:text-[15px]"
+              >
+                <img
+                  src="https://www.svgrepo.com/show/355037/google.svg"
+                  className="w-4 h-4 sm:w-5 sm:h-5 brightness-200"
+                  alt="Google"
+                />
+                Sign up with Google
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGithubLogin}
+                className="w-full flex items-center justify-center gap-3 py-3.5 sm:py-4 border border-transparent rounded-[18px] font-bold text-white bg-[#24292f] hover:bg-[#1a1e22] transition-all shadow-md text-sm sm:text-[15px]"
+              >
+                <Github size={18} className="sm:w-5 sm:h-5" />
+                Sign up with GitHub
+              </button>
+            </div>
+
+            <div className="relative flex items-center mb-8 sm:mb-10">
+              <div className="flex-grow border-t border-gray-100"></div>
+              <span className="mx-4 text-[#9e9ea7] text-[12px] sm:text-[14px] font-bold uppercase tracking-wider">
+                OR
+              </span>
+              <div className="flex-grow border-t border-gray-100"></div>
+            </div>
+
+            <form
+              className="space-y-4 sm:space-y-5"
+              onSubmit={handleInitialSubmit}
+            >
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-xs sm:text-[14px] font-bold text-[#1a1c2e] ml-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter Name here"
+                  className="w-full px-4 py-3.5 sm:px-5 sm:py-4 bg-[#f8f9fb] border-transparent rounded-[15px] sm:rounded-[18px] text-sm sm:text-[15px] outline-none focus:bg-white focus:ring-2 focus:ring-[#4285f4] transition-all"
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-xs sm:text-[14px] font-bold text-[#1a1c2e] ml-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="hello@example.com"
+                  className="w-full px-4 py-3.5 sm:px-5 sm:py-4 bg-[#f8f9fb] border-transparent rounded-[15px] sm:rounded-[18px] text-sm sm:text-[15px] outline-none focus:bg-white focus:ring-2 focus:ring-[#4285f4] transition-all"
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+
+              {error && (
+                <p className="text-red-500 text-xs sm:text-sm font-bold text-center">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 sm:py-5 bg-[#14162e] text-white rounded-[18px] sm:rounded-[20px] font-bold text-[16px] sm:text-[17px] shadow-xl hover:bg-[#1f2142] transition-all active:scale-[0.98] disabled:bg-gray-300 mt-4"
+              >
+                {loading ? "Creating Account..." : "Create Account"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="animate-in zoom-in-95 duration-500">
+            <form
+              onSubmit={handleVerifyOtp}
+              className="space-y-8 sm:space-y-10"
+            >
+              <div className="flex justify-between gap-2 sm:gap-3">
+                {otp.map((data, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    maxLength={1}
+                    ref={(el) => {
+                      inputRefs.current[index] = el;
+                    }}
+                    value={data}
+                    onChange={(e) => handleOtpChange(e.target.value, index)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    className="w-full h-12 sm:h-16 text-center text-xl sm:text-2xl font-black bg-[#f8f9fb] border-2 border-transparent rounded-xl sm:rounded-2xl focus:bg-white focus:border-[#4285f4] outline-none transition-all"
+                  />
+                ))}
+              </div>
+
+              {error && (
+                <p className="text-red-500 text-xs sm:text-sm font-bold text-center">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 sm:py-5 bg-[#14162e] text-white rounded-[18px] sm:rounded-[20px] font-bold text-[16px] sm:text-[17px] shadow-xl active:scale-95"
+              >
+                {loading ? "Verifying..." : "Verify & Sign Up"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        <p className="mt-8 sm:mt-12 text-center text-sm sm:text-[15px] text-[#6e6d7a] font-medium">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="text-[#d9a34a] font-bold hover:underline"
+          >
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
 }

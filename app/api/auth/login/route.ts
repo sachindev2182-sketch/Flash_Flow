@@ -1,45 +1,57 @@
-import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
-import { connectDB } from '@/lib/db';
-import { otpStore } from '../signup/route'; // Reusing the same Map
-import User from '@/models/User';
+import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
+import { connectDB } from "@/lib/db";
+import User from "@/models/User";
+import Otp from "@/models/Otp";
 
 export async function POST(req: Request) {
-    try {
-        await connectDB();
-        const { email } = await req.json();
+  try {
+    await connectDB();
 
-        // 1. Check if user exists
-        const user = await User.findOne({ email });
-        if (!user) {
-            return NextResponse.json({ error: "No account found with this email" }, { status: 404 });
-        }
+    const { email } = await req.json();
 
-        // 2. Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const user = await User.findOne({ email });
 
-        // 3. Send Email
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-        });
-
-        await transporter.sendMail({
-            from: `"Finance Tracker" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Your Login Code",
-            html: `<h1>Your code is: ${otp}</h1><p>It expires in 10 minutes.</p>`,
-        });
-
-        // 4. Store in memory (expires in 10 mins)
-        otpStore.set(email, { 
-            otp, 
-            expires: Date.now() + 600000, 
-            data: { email } 
-        });
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        return NextResponse.json({ error: "Failed to send OTP" }, { status: 500 });
+    if (!user) {
+      return NextResponse.json(
+        { error: "No account found with this email" },
+        { status: 404 }
+      );
     }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await Otp.deleteMany({ email });
+
+    await Otp.create({
+      email,
+      otp,
+      type: "login",
+      expires: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"Finance Tracker" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Your Login OTP",
+      html: `<h2>Your OTP is: ${otp}</h2><p>Expires in 10 minutes</p>`,
+    });
+
+    return NextResponse.json({ success: true });
+
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Login failed" },
+      { status: 500 }
+    );
+  }
 }
