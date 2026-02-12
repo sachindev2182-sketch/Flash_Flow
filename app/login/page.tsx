@@ -83,6 +83,7 @@ export default function LoginPage() {
       } else {
         window.location.href = "/dashboard";
       }
+
     } catch (err: any) {
       setError(err.message);
     } finally {
