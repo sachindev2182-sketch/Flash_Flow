@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     });
 
     await transporter.sendMail({
-      from: `"Finance Tracker" <${process.env.EMAIL_USER}>`,
+      from: `"Flash Flow" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your Login OTP",
       html: `<h2>Your OTP is: ${otp}</h2><p>Expires in 10 minutes</p>`,
