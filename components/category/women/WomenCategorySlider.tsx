@@ -12,12 +12,12 @@ type Slide = {
 const slides: Slide[] = [
   {
     id: 1,
-    image: "/women_slider_1.jfif",
+    image: "/women_slider_1.png",
     alt: "Women's Fashion Sale"
   },
   {
     id: 2,
-    image: "/women_slider_2.jfif",
+    image: "/women_slider_2.png",
     alt: "Women's Ethnic Wear"
   },
   {
@@ -112,7 +112,7 @@ export default memo(function WomenCategorySlider() {
               }}
               className={`h-2 sm:h-2.5 rounded-full transition-all duration-300
               ${i === index 
-                ? "w-6 sm:w-8 bg-pink-500" 
+                ? "w-6 sm:w-8 bg-indigo-500" 
                 : "w-2 sm:w-2.5 bg-white/60 hover:bg-white/80"
               }`}
               aria-label={`Go to slide ${i + 1}`}

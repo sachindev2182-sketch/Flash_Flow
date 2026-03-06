@@ -332,6 +332,7 @@ export default function Navbar({
                       onClick={() => setIsProfileMenuOpen(false)}
                     >
                       <ShoppingBag size={16} className="text-[#5D5FEF]" />
+                      <span>Cart</span>
                       {user && cartItems.length > 0 && (
                         <span className="absolute -top-1 -right-1 bg-[#5D5FEF] text-white text-xs min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1 font-medium">
                           {cartItems.length > 99 ? "99+" : cartItems.length}

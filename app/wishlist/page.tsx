@@ -185,11 +185,9 @@ export default function WishlistPage() {
                   disabled={loading}
                   className="flex items-center gap-2 px-4 py-2 bg-white text-red-500 rounded-lg border border-red-200 hover:bg-red-50 transition-all active:scale-95 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
+                  
                     <Trash2 size={16} />
-                  )}
+                  
                   <span className="hidden sm:inline">Clear Wishlist</span>
                 </button>
               )}
@@ -199,7 +197,6 @@ export default function WishlistPage() {
           {/* Products Grid */}
           {loading && wishlistItems.length === 0 ? (
             <div className="flex justify-center items-center min-h-[400px]">
-              <Loader2 size={40} className="text-[#5D5FEF] animate-spin" />
             </div>
           ) : wishlistItems.length === 0 ? (
             <motion.div

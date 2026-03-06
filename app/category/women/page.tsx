@@ -60,7 +60,7 @@ export default function WomenCategoryPage() {
         <div className="text-center">
           <div className="relative w-20 h-20 mx-auto mb-4">
             <div className="absolute top-0 left-0 w-full h-full border-4 border-gray-200 rounded-full"></div>
-            <div className="absolute top-0 left-0 w-full h-full border-4 border-pink-500 rounded-full border-t-transparent animate-spin"></div>
+            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
           </div>         
           <p className="text-gray-600 font-medium">Loading Women's Collection...</p>       
         </div>
@@ -77,9 +77,12 @@ export default function WomenCategoryPage() {
       />
       
       {/* Main content */}
-      <main className="pt-20 sm:pt-24 pb-12 sm:pb-16">
+      <main className="pt-20 sm:pt-24">
+        {/* WomenCategorySlider - Full width outside container */}
+        <WomenCategorySlider />
+        
+        {/* Rest of the content inside container */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <WomenCategorySlider />
           <WomenCollection user={user} />
         </div>
       </main>

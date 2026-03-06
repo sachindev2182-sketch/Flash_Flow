@@ -60,9 +60,11 @@ export default function KidsCategoryPage() {
         <div className="text-center">
           <div className="relative w-20 h-20 mx-auto mb-4">
             <div className="absolute top-0 left-0 w-full h-full border-4 border-gray-200 rounded-full"></div>
-            <div className="absolute top-0 left-0 w-full h-full border-4 border-green-500 rounded-full border-t-transparent animate-spin"></div>
-          </div>         
-          <p className="text-gray-600 font-medium">Loading Kids' Collection...</p>       
+            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+          </div>
+          <p className="text-gray-600 font-medium">
+            Loading Kids' Collection...
+          </p>
         </div>
       </div>
     );
@@ -70,21 +72,20 @@ export default function KidsCategoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar 
+      <Navbar
         user={user}
         onProfileClick={() => setShowProfile(true)}
         onLogout={handleLogout}
       />
-      
+
       {/* Main content */}
       <main className="pt-20 sm:pt-24 pb-12 sm:pb-16">
+        <KidsCategorySlider />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <KidsCategorySlider />
-          
           <KidsCollection user={user} />
         </div>
       </main>
-        <Footer />
+      <Footer />
 
       {/* Profile Modal */}
       {showProfile && (
@@ -109,7 +110,9 @@ export default function KidsCategoryPage() {
                     className="rounded-full object-cover"
                   />
                 ) : (
-                  (user?.displayName || user?.name || user?.email)?.charAt(0).toUpperCase()
+                  (user?.displayName || user?.name || user?.email)
+                    ?.charAt(0)
+                    .toUpperCase()
                 )}
               </div>
 

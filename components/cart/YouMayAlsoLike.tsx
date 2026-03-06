@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,8 +38,14 @@ export default function YouMayAlsoLike() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Get cart product IDs as a stable string for dependency
+  const cartProductIdsString = useMemo(() => {
+    return cartItems.map(item => item.productId).sort().join(',');
+  }, [cartItems]);
 
   useEffect(() => {
     dispatch(fetchCart());
@@ -48,64 +54,33 @@ export default function YouMayAlsoLike() {
 
   useEffect(() => {
     const fetchRecommendations = async () => {
+      // Prevent re-fetching if we already have products and cart IDs haven't changed significantly
+      if (hasFetched && recommendedProducts.length > 0) {
+        return;
+      }
+
       setLoading(true);
       setError(null);
       
       try {
-        let allProducts: SimilarProduct[] = [];
+        // Get IDs of products already in cart to exclude them
+        const cartProductIds = cartItems.map(item => item.productId);
         
-        if (cartItems.length === 0) {
-          const categories = ["men", "women", "kids", "beauty", "home"];
-          
-          const promises = categories.map(async (category) => {
-            const response = await fetch(
-              `/api/products/similar?category=${category}&limit=2`
-            );
-            
-            if (!response.ok) {
-              throw new Error(`Failed to fetch ${category} products`);
-            }
-            
-            const data = await response.json();
-            return data.products || [];
-          });
-
-          const results = await Promise.all(promises);
-          allProducts = results.flat();
-        } else {
-          // Get unique categories from cart items
-          const categoriesInCart = [...new Set(cartItems.map(item => item.category))];
-          
-          // Fetch 3 products from each category in cart
-          const promises = categoriesInCart.map(async (category) => {
-            const response = await fetch(
-              `/api/products/similar?category=${category}&limit=3`
-            );
-            
-            if (!response.ok) {
-              throw new Error(`Failed to fetch ${category} products`);
-            }
-            
-            const data = await response.json();
-            return data.products || [];
-          });
-
-          const results = await Promise.all(promises);
-          allProducts = results.flat();
+        // Build URL with cart product IDs to exclude
+        let url = '/api/products/similar?limit=10';
+        if (cartProductIds.length > 0) {
+          url += `&excludeIds=${cartProductIds.join(',')}`;
         }
 
-        // Filter out products that are already in cart
-        const cartProductIds = cartItems.map(item => item.productId);
-        const filteredProducts = allProducts.filter(p => !cartProductIds.includes(p._id));
+        const response = await fetch(url);
         
-        // Remove duplicates based on _id
-        const uniqueProducts = Array.from(
-          new Map(filteredProducts.map(p => [p._id, p])).values()
-        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch recommendations');
+        }
         
-        // Shuffle and take first 10
-        const shuffled = uniqueProducts.sort(() => 0.5 - Math.random());
-        setRecommendedProducts(shuffled.slice(0, 10));
+        const data = await response.json();
+        setRecommendedProducts(data.products || []);
+        setHasFetched(true);
       } catch (err) {
         console.error("Error fetching recommendations:", err);
         setError("Failed to load recommendations");
@@ -114,8 +89,12 @@ export default function YouMayAlsoLike() {
       }
     };
 
-    fetchRecommendations();
-  }, [cartItems]);
+    // Only fetch if we haven't fetched before or if cart items are added/removed (not updated)
+    // We check if the number of cart items has changed, not the items themselves
+    if (!hasFetched) {
+      fetchRecommendations();
+    }
+  }, [hasFetched]); // Remove cartItems dependency
 
   // Update wishlist states
   useEffect(() => {
@@ -247,16 +226,6 @@ export default function YouMayAlsoLike() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex justify-center items-center">
-          <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
   if (error || recommendedProducts.length === 0) {
     return null;
   }
@@ -271,9 +240,7 @@ export default function YouMayAlsoLike() {
               You May Also Like
             </h2>
             <p className="text-sm text-gray-600">
-              {cartItems.length > 0 
-                ? "Based on items in your cart"
-                : "Recommended for you"}
+              Hand-picked recommendations for you
             </p>
           </div>
 
@@ -282,12 +249,14 @@ export default function YouMayAlsoLike() {
             <button
               onClick={() => scroll('left')}
               className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+              aria-label="Scroll left"
             >
               <ChevronLeft size={18} />
             </button>
             <button
               onClick={() => scroll('right')}
               className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+              aria-label="Scroll right"
             >
               <ChevronRight size={18} />
             </button>
@@ -344,14 +313,12 @@ export default function YouMayAlsoLike() {
                           className={`absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50`}
                           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                         >
-                          {isWishlistLoading ? (
-                            <div className="w-4 h-4 border-2 border-[#5D5FEF] border-t-transparent rounded-full animate-spin" />
-                          ) : (
+                         
                             <Heart 
                               size={14} 
                               className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-700'} 
                             />
-                          )}
+                         
                         </button>
                       </div>
                     </Link>
@@ -381,11 +348,9 @@ export default function YouMayAlsoLike() {
                             className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex-shrink-0"
                             title="Remove from cart"
                           >
-                            {isCartLoading ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
+                            
                               <Trash2 size={14} />
-                            )}
+                           
                           </button>
                         ) : (
                           <button
@@ -394,11 +359,9 @@ export default function YouMayAlsoLike() {
                             className="p-1.5 bg-[#5D5FEF] text-white rounded-lg hover:bg-[#4B4DC9] transition-colors disabled:opacity-50 flex-shrink-0"
                             title="Add to cart"
                           >
-                            {isCartLoading ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
+                            
                               <ShoppingBag size={14} />
-                            )}
+                            
                           </button>
                         )}
                       </div>

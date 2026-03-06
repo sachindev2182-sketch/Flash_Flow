@@ -229,11 +229,7 @@ export default function AddressPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Address List */}
             <div className="lg:col-span-2">
-              {loading ? (
-                <div className="bg-white rounded-2xl p-8 flex justify-center">
-                  <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
-                </div>
-              ) : (
+              
                 <AddressList
                   addresses={addresses}
                   onEdit={handleEdit}
@@ -243,7 +239,7 @@ export default function AddressPage() {
                     showToast("Address Set Default successfully", "success");
                   }}
                 />
-              )}
+             
             </div>
 
             {/* Address Form */}

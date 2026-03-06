@@ -215,19 +215,19 @@ export default function CartBag({ onProceed }: CartBagProps) {
     return ["men", "women", "kids"].includes(category);
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2
-            size={40}
-            className="text-[#5D5FEF] animate-spin mx-auto mb-4"
-          />
-          <p className="text-gray-600">Loading your cart...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex justify-center items-center min-h-[400px]">
+  //       <div className="text-center">
+  //         <Loader2
+  //           size={40}
+  //           className="text-[#5D5FEF] animate-spin mx-auto mb-4"
+  //         />
+  //         <p className="text-gray-600">Loading your cart...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -235,20 +235,6 @@ export default function CartBag({ onProceed }: CartBagProps) {
         {/* Cart Header */}
         <div className="bg-white rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={
-                  selectedItems.length === items.length && items.length > 0
-                }
-                onChange={handleSelectAll}
-                disabled={operationLoading}
-                className="w-4 h-4 rounded border-gray-300 text-[#5D5FEF] focus:ring-[#5D5FEF]"
-              />
-              <span className="text-sm font-medium text-[#1B2559]">
-                Select All ({selectedItems.length} of {items.length})
-              </span>
-            </label>
 
             {items.length > 0 && (
               <button
@@ -285,18 +271,6 @@ export default function CartBag({ onProceed }: CartBagProps) {
                 className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
               >
                 <div className="flex gap-4">
-                  {/* Checkbox */}
-                  <div className="flex items-start pt-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.includes(item.productId)}
-                      onChange={(e) =>
-                        handleToggleSelect(item.productId, e.target.checked)
-                      }
-                      disabled={operationLoading || isLoading}
-                      className="w-4 h-4 rounded border-gray-300 text-[#5D5FEF] focus:ring-[#5D5FEF]"
-                    />
-                  </div>
 
                   {/* Product Image */}
                   <Link
@@ -363,12 +337,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
                               </option>
                             ))}
                           </select>
-                          {localLoading[`size-${item.productId}`] && (
-                            <Loader2
-                              size={12}
-                              className="animate-spin text-[#5D5FEF]"
-                            />
-                          )}
+                          
                         </div>
                       )}
 
@@ -403,12 +372,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
                         >
                           <Plus size={14} />
                         </button>
-                        {localLoading[`quantity-${item.productId}`] && (
-                          <Loader2
-                            size={12}
-                            className="animate-spin text-[#5D5FEF]"
-                          />
-                        )}
+                        
                       </div>
 
                       {/* Action Buttons */}
@@ -423,11 +387,9 @@ export default function CartBag({ onProceed }: CartBagProps) {
                           }`}
                           title="Move to wishlist"
                         >
-                          {localLoading[`wishlist-${item.productId}`] ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
+                          
                             <Heart size={16} />
-                          )}
+                         
                         </button>
                         <button
                           onClick={() => handleRemoveItem(item.productId)}
@@ -439,11 +401,9 @@ export default function CartBag({ onProceed }: CartBagProps) {
                           }`}
                           title="Remove item"
                         >
-                          {localLoading[`remove-${item.productId}`] ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
+                          
                             <Trash2 size={16} />
-                          )}
+                         
                         </button>
                       </div>
                     </div>

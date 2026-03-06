@@ -206,15 +206,15 @@ export default function SimilarProducts({ currentProductId, category }: SimilarP
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex justify-center items-center">
-          <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+  //       <div className="flex justify-center items-center">
+  //         <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (error || products.length === 0) {
     return null; 
@@ -303,14 +303,12 @@ export default function SimilarProducts({ currentProductId, category }: SimilarP
                           className={`absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50`}
                           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
                         >
-                          {isWishlistLoading ? (
-                            <div className="w-4 h-4 border-2 border-[#5D5FEF] border-t-transparent rounded-full animate-spin" />
-                          ) : (
+                         
                             <Heart 
                               size={14} 
                               className={isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-700'} 
                             />
-                          )}
+                          
                         </button>
                       </div>
                     </Link>
@@ -338,11 +336,9 @@ export default function SimilarProducts({ currentProductId, category }: SimilarP
                           disabled={isCartLoading || cartLoading}
                           className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50"
                         >
-                          {isCartLoading ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
+                          
                             <Trash2 size={12} />
-                          )}
+                         
                           <span>Remove</span>
                         </button>
                       ) : (
@@ -351,17 +347,12 @@ export default function SimilarProducts({ currentProductId, category }: SimilarP
                           disabled={isCartLoading || cartLoading}
                           className="px-3 py-1.5 bg-[#5D5FEF] text-white rounded-lg hover:bg-[#4B4DC9] transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50"
                         >
-                          {isCartLoading ? (
-                            <>
-                              <Loader2 size={12} className="animate-spin" />
-                              Adding...
-                            </>
-                          ) : (
+                          
                             <>
                               <ShoppingBag size={12} />
                               <span>Add</span>
                             </>
-                          )}
+                          
                         </button>
                       )}
                     </div>

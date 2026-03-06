@@ -168,7 +168,7 @@ const WishlistCard = memo(({ item, onRemove }: WishlistCardProps) => {
               >
                 {localLoading ? (
                   <>
-                    <Loader2 size={12} className="animate-spin" />
+                  
                     <span>Adding...</span>
                   </>
                 ) : (

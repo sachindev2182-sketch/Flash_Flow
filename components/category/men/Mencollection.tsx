@@ -428,16 +428,14 @@ const ProductCard = memo(
                   isWishlisted ? "Remove from wishlist" : "Add to wishlist"
                 }
               >
-                {localWishlistLoading ? (
-                  <div className="w-4 h-4 border-2 border-[#5D5FEF] border-t-transparent rounded-full animate-spin" />
-                ) : (
+               
                   <Heart
                     size={16}
                     className={
                       isWishlisted ? "fill-red-500 text-red-500" : "text-gray-700"
                     }
                   />
-                )}
+               
               </button>
             </div>
           </Link>
@@ -466,14 +464,12 @@ const ProductCard = memo(
                   disabled={localCartLoading || !user}
                   className="w-full bg-red-500 hover:bg-red-600 text-white py-1.5 rounded-md font-medium text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center gap-1 disabled:opacity-50"
                 >
-                  {localCartLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
+                  
                     <>
                       <Trash2 size={10} />
                       <span>Remove from Cart</span>
                     </>
-                  )}
+                 
                 </button>
               ) : (
                 <button
@@ -481,14 +477,12 @@ const ProductCard = memo(
                   disabled={localCartLoading || !user}
                   className="w-full bg-[#5D5FEF] hover:bg-[#4B4DC9] text-white py-1.5 rounded-md font-medium text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center gap-1 disabled:opacity-50"
                 >
-                  {localCartLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
+                 
                     <>
                       <ShoppingBag size={10} />
                       <span>Add to Cart</span>
                     </>
-                  )}
+                  
                 </button>
               )}
             </div>
@@ -709,15 +703,15 @@ export default memo(function MenCollection({ user }: MenCollectionProps) {
     [dispatch],
   );
 
-  if (loading && menProducts.length === 0) {
-    return (
-      <section className="w-full py-6">
-        <div className="flex justify-center items-center min-h-[400px]">
-          <Loader2 size={40} className="text-[#5D5FEF] animate-spin" />
-        </div>
-      </section>
-    );
-  }
+  // if (loading && menProducts.length === 0) {
+  //   return (
+  //     <section className="w-full py-6">
+  //       <div className="flex justify-center items-center min-h-[400px]">
+  //         <Loader2 size={40} className="text-[#5D5FEF] animate-spin" />
+  //       </div>
+  //     </section>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -774,7 +768,7 @@ export default memo(function MenCollection({ user }: MenCollectionProps) {
       />
 
       {/* Products Grid */}
-      <div id="products-grid">
+      <div id="products-grid" className="mt-8 sm:mt-10">
         {menProducts.length === 0 ? (
           <div className="text-center py-8 bg-white rounded-lg">
             <p className="text-gray-500">No products found in this category</p>

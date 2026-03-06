@@ -181,15 +181,15 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     return null;
   }
 
-  if (loading && reviews.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex justify-center items-center">
-          <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  // if (loading && reviews.length === 0) {
+  //   return (
+  //     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+  //       <div className="flex justify-center items-center">
+  //         <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 lg:p-8">

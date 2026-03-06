@@ -64,7 +64,7 @@ const SubcategoryCard = memo(({ subcategory, icon: Icon, isSelected, onClick }: 
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={`cursor-pointer rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex-none w-[140px] sm:w-[160px] ${
-        isSelected ? 'ring-2 ring-green-500 ring-offset-2' : ''
+        isSelected ? 'ring-2 ring-[#5D5FEF] ring-offset-2' : ''
       }`}
     >
       <div className="relative h-24 sm:h-28 w-full bg-gray-100">
@@ -415,7 +415,7 @@ const ProductCard = memo(
 
             {/* In Cart Badge */}
             {isInCart && (
-              <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-sm z-10 flex items-center gap-1">
+              <div className="absolute top-2 left-2 bg-[#5D5FEF]  text-white text-[10px] font-bold px-1.5 py-0.5 rounded-sm z-10 flex items-center gap-1">
                 <CheckCircle size={10} />
                 In Cart
               </div>
@@ -433,16 +433,14 @@ const ProductCard = memo(
                 isWishlisted ? "Remove from wishlist" : "Add to wishlist"
               }
             >
-              {localWishlistLoading ? (
-                <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-              ) : (
+              
                 <Heart
                   size={16}
                   className={
                     isWishlisted ? "fill-red-500 text-red-500" : "text-gray-700"
                   }
                 />
-              )}
+              
             </button>
           </div>
 
@@ -471,29 +469,25 @@ const ProductCard = memo(
                   disabled={localCartLoading || !user}
                   className="w-full bg-red-500 hover:bg-red-600 text-white py-1.5 rounded-md font-medium text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center gap-1 disabled:opacity-50"
                 >
-                  {localCartLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
+                  
                     <>
                       <Trash2 size={10} />
                       <span>Remove from Cart</span>
                     </>
-                  )}
+                  
                 </button>
               ) : (
                 <button
                   onClick={handleAddToCart}
                   disabled={localCartLoading || !user}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white py-1.5 rounded-md font-medium text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center gap-1 disabled:opacity-50"
+                  className="w-full bg-[#5D5FEF] hover:bg-[#4B4DC9] text-white py-1.5 rounded-md font-medium text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center gap-1 disabled:opacity-50"
                 >
-                  {localCartLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
+                  
                     <>
                       <ShoppingBag size={10} />
                       <span>Add to Cart</span>
                     </>
-                  )}
+                 
                 </button>
               )}
             </div>
@@ -722,16 +716,16 @@ export default memo(function KidsCollection({ user }: KidsCollectionProps) {
     [dispatch],
   );
 
-  if (loading && kidsProducts.length === 0) {
-    return (
-      <section className="w-full py-4 sm:py-6">
-        <div className="flex flex-col items-center justify-center min-h-[300px]">
-          <Loader2 size={32} className="text-green-500 animate-spin mb-3" />
-          <p className="text-sm text-gray-600">Loading products...</p>
-        </div>
-      </section>
-    );
-  }
+  // if (loading && kidsProducts.length === 0) {
+  //   return (
+  //     <section className="w-full py-4 sm:py-6">
+  //       <div className="flex flex-col items-center justify-center min-h-[300px]">
+  //         <Loader2 size={32} className="text-green-500 animate-spin mb-3" />
+  //         <p className="text-sm text-gray-600">Loading products...</p>
+  //       </div>
+  //     </section>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -788,7 +782,7 @@ export default memo(function KidsCollection({ user }: KidsCollectionProps) {
       />
 
       {/* Products Grid */}
-      <div id="products-grid">
+      <div id="products-grid" className="mt-8 sm:mt-10">
         {kidsProducts.length === 0 ? (
           <div className="text-center py-8 bg-white rounded-lg">
             <p className="text-gray-500">No products found in this category</p>

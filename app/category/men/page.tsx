@@ -80,8 +80,11 @@ export default function MenCategoryPage() {
 
       {/* Main content */}
       <main className="pt-20 sm:pt-24">
+        {/* MenCategorySlider - Full width outside container */}
+        <MenCategorySlider />
+        
+        {/* Rest of the content inside container */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <MenCategorySlider />
           <Mencollection user={user}/>
         </div>
         <Footer />

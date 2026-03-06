@@ -8,29 +8,28 @@ export async function GET(req: NextRequest) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const category = searchParams.get("category");
     const currentProductId = searchParams.get("currentProductId");
-    const limit = parseInt(searchParams.get("limit") || "5");
+    const limit = parseInt(searchParams.get("limit") || "10");
 
-    if (!category) {
-      return NextResponse.json(
-        { error: "Category is required" },
-        { status: 400 }
-      );
-    }
+    let filter: any = {};
 
-    let filter: any = {
-      category: category.toLowerCase(),
-    };
-
+    // Exclude current product if provided
     if (currentProductId && mongoose.Types.ObjectId.isValid(currentProductId)) {
       filter._id = { $ne: currentProductId };
     }
 
+    // Get all products (or a large sample) and shuffle
     const allProducts = await Product.find(filter).lean();
 
-    const shuffled = allProducts.sort(() => 0.5 - Math.random());
-    const selectedProducts = shuffled.slice(0, Math.min(limit, allProducts.length));
+    // Fisher-Yates shuffle algorithm
+    const shuffled = [...allProducts];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // Take first 'limit' products
+    const selectedProducts = shuffled.slice(0, Math.min(limit, shuffled.length));
 
     const transformedProducts = selectedProducts.map(product => ({
       _id: product._id.toString(),

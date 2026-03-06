@@ -5,15 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, Variants, AnimatePresence } from "framer-motion";
-import { 
-  Heart, 
-  ShoppingBag, 
+import {
+  Heart,
+  ShoppingBag,
   Trash2,
   CheckCircle,
   AlertCircle,
   Loader2,
-  ChevronLeft, 
-  ChevronRight 
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import {
@@ -36,17 +36,25 @@ interface BeautySectionProps {
 }
 
 const ProductCard = memo(
-  ({ product, index, user }: { product: Product; index: number; user: any }) => {
+  ({
+    product,
+    index,
+    user,
+  }: {
+    product: Product;
+    index: number;
+    user: any;
+  }) => {
     const router = useRouter();
     const dispatch = useAppDispatch();
-    
+
     const { items: wishlistItems, loading: wishlistLoading } = useAppSelector(
       (state) => state.wishlist,
     );
     const { items: cartItems, operationLoading: cartLoading } = useAppSelector(
       (state) => state.cart,
     );
-    
+
     const [localWishlistLoading, setLocalWishlistLoading] = useState(false);
     const [localCartLoading, setLocalCartLoading] = useState(false);
     const [showToast, setShowToast] = useState(false);
@@ -57,11 +65,12 @@ const ProductCard = memo(
       (item) => item.productId === product._id,
     );
 
-    const isInCart = cartItems.some(
-      (item) => item.productId === product._id,
-    );
+    const isInCart = cartItems.some((item) => item.productId === product._id);
 
-    const showToastMessage = (message: string, type: "success" | "error" = "success") => {
+    const showToastMessage = (
+      message: string,
+      type: "success" | "error" = "success",
+    ) => {
       setToastMessage(message);
       setToastType(type);
       setShowToast(true);
@@ -71,12 +80,12 @@ const ProductCard = memo(
     const handleWishlistClick = async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (!user) {
         router.push("/login");
         return;
       }
-      
+
       if (localWishlistLoading || wishlistLoading) return;
 
       setLocalWishlistLoading(true);
@@ -108,12 +117,12 @@ const ProductCard = memo(
     const handleAddToCart = async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (!user) {
         router.push("/login");
         return;
       }
-      
+
       if (localCartLoading || cartLoading) return;
 
       setLocalCartLoading(true);
@@ -144,12 +153,12 @@ const ProductCard = memo(
     const handleRemoveFromCart = async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (!user) {
         router.push("/login");
         return;
       }
-      
+
       if (localCartLoading || cartLoading) return;
 
       setLocalCartLoading(true);
@@ -190,14 +199,17 @@ const ProductCard = memo(
           animate="visible"
           className="group relative bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col"
         >
-          {/* Product Image Container  */}
-          <Link href={`/product/${product._id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-100 flex-shrink-0">
+          {/* Product Image Container */}
+          <Link
+            href={`/product/${product._id}`}
+            className="block relative aspect-[3/4] overflow-hidden bg-gray-100 flex-shrink-0"
+          >
             <Image
               src={product.image}
               alt={product.title}
               fill
               className="object-cover transition-transform duration-700 group-hover:scale-110"
-              sizes="(max-width: 640px) 80vw, (max-width: 1024px) 33vw, 25vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             />
 
             {/* New Arrival Badge */}
@@ -209,7 +221,7 @@ const ProductCard = memo(
 
             {/* In Cart Badge */}
             {isInCart && (
-              <div className="absolute top-3 left-3 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-md z-10 flex items-center gap-1">
+              <div className="absolute top-3 left-3 bg-[#5D5FEF] text-white text-xs font-bold px-2 py-1 rounded-md z-10 flex items-center gap-1">
                 <CheckCircle size={12} />
                 In Cart
               </div>
@@ -230,23 +242,19 @@ const ProductCard = memo(
                 isWishlisted ? "Remove from wishlist" : "Add to wishlist"
               }
             >
-              {localWishlistLoading ? (
-                <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Heart
-                  size={18}
-                  className={`transition-colors ${
-                    isWishlisted ? "fill-red-500 text-red-500" : "text-gray-700"
-                  }`}
-                />
-              )}
+              <Heart
+                size={18}
+                className={`transition-colors ${
+                  isWishlisted ? "fill-red-500 text-red-500" : "text-gray-700"
+                }`}
+              />
             </motion.button>
           </Link>
 
-          {/* Product Details  */}
-          <div className="p-3 sm:p-4 flex flex-col flex-1">
+          {/* Product Details */}
+          <div className="p-2 sm:p-3 md:p-4 flex flex-col flex-1">
             <Link href={`/product/${product._id}`}>
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] mb-1 hover:text-purple-600 transition-colors">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] mb-1 hover:text-[#5D5FEF] transition-colors">
                 {product.title}
               </h3>
             </Link>
@@ -268,29 +276,21 @@ const ProductCard = memo(
                   disabled={localCartLoading || !user}
                   className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {localCartLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Trash2 size={14} />
-                      <span>Remove from Cart</span>
-                    </>
-                  )}
+                  <>
+                    <Trash2 size={14} />
+                    <span>Remove from Cart</span>
+                  </>
                 </button>
               ) : (
                 <button
                   onClick={handleAddToCart}
                   disabled={localCartLoading || !user}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-[#5D5FEF] hover:bg-[#4B4DC9] text-white py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {localCartLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <ShoppingBag size={14} />
-                      <span>Add to Cart</span>
-                    </>
-                  )}
+                  <>
+                    <ShoppingBag size={14} />
+                    <span>Add to Cart</span>
+                  </>
                 </button>
               )}
             </div>
@@ -317,7 +317,9 @@ const ProductCard = memo(
             >
               <div
                 className={`px-4 py-2 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 ${
-                  toastType === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                  toastType === "success"
+                    ? "bg-green-500 text-white"
+                    : "bg-red-500 text-white"
                 }`}
               >
                 {toastType === "success" ? (
@@ -337,179 +339,192 @@ const ProductCard = memo(
 
 ProductCard.displayName = "ProductCard";
 
-const ResponsiveSlider = memo(({ products, user }: { products: Product[]; user: any }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState(0);
-  const [touchEnd, setTouchEnd] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [itemsPerView, setItemsPerView] = useState(1);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+const ResponsiveSlider = memo(
+  ({ products, user }: { products: Product[]; user: any }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [touchStart, setTouchStart] = useState(0);
+    const [touchEnd, setTouchEnd] = useState(0);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [itemsPerView, setItemsPerView] = useState(1);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Calculate items per view based on screen size
-  useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        setItemsPerView(1);
-      } else if (width >= 640 && width < 1024) {
-        setItemsPerView(3);
+    // Calculate items per view based on screen size
+    useEffect(() => {
+      const handleResize = () => {
+        const width = window.innerWidth;
+        if (width < 640) {
+          setItemsPerView(2);
+        } else if (width >= 640 && width < 1024) {
+          setItemsPerView(3);
+        } else {
+          setItemsPerView(5);
+        }
+      };
+
+      handleResize();
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const totalSlides =
+      itemsPerView === 3 ? 2 : Math.ceil(products.length / itemsPerView);
+
+    const getCurrentProducts = () => {
+      if (itemsPerView === 3) {
+        if (currentIndex === 0) {
+          return products.slice(0, 3);
+        } else {
+          return products.slice(3, 5);
+        }
       } else {
-        setItemsPerView(5);
+        const start = currentIndex * itemsPerView;
+        return products.slice(start, start + itemsPerView);
       }
     };
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    const currentProducts = getCurrentProducts();
 
-  const totalSlides =
-    itemsPerView === 3 ? 2 : Math.ceil(products.length / itemsPerView);
+    const goToSlide = useCallback(
+      (index: number) => {
+        if (isTransitioning) return;
+        setIsTransitioning(true);
+        setCurrentIndex(index);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => setIsTransitioning(false), 300);
+      },
+      [isTransitioning],
+    );
 
-  const getCurrentProducts = () => {
-    if (itemsPerView === 3) {
-      if (currentIndex === 0) {
-        return products.slice(0, 3);
-      } else {
-        return products.slice(3, 5);
-      }
-    } else {
-      const start = currentIndex * itemsPerView;
-      return products.slice(start, start + itemsPerView);
-    }
-  };
-
-  const currentProducts = getCurrentProducts();
-
-  const goToSlide = useCallback(
-    (index: number) => {
+    const nextSlide = useCallback(() => {
       if (isTransitioning) return;
-      setIsTransitioning(true);
-      setCurrentIndex(index);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => setIsTransitioning(false), 300);
-    },
-    [isTransitioning],
-  );
+      goToSlide((currentIndex + 1) % totalSlides);
+    }, [currentIndex, isTransitioning, goToSlide, totalSlides]);
 
-  const nextSlide = useCallback(() => {
-    if (isTransitioning) return;
-    goToSlide((currentIndex + 1) % totalSlides);
-  }, [currentIndex, isTransitioning, goToSlide, totalSlides]);
+    const prevSlide = useCallback(() => {
+      if (isTransitioning) return;
+      goToSlide(currentIndex === 0 ? totalSlides - 1 : currentIndex - 1);
+    }, [currentIndex, isTransitioning, goToSlide, totalSlides]);
 
-  const prevSlide = useCallback(() => {
-    if (isTransitioning) return;
-    goToSlide(currentIndex === 0 ? totalSlides - 1 : currentIndex - 1);
-  }, [currentIndex, isTransitioning, goToSlide, totalSlides]);
+    useEffect(() => {
+      return () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      };
+    }, []);
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    const handleTouchStart = (e: React.TouchEvent) => {
+      setTouchStart(e.targetTouches[0].clientX);
     };
-  }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
-  };
+    const handleTouchMove = (e: React.TouchEvent) => {
+      setTouchEnd(e.targetTouches[0].clientX);
+    };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
+    const handleTouchEnd = () => {
+      if (touchStart - touchEnd > 75) {
+        nextSlide();
+      } else if (touchStart - touchEnd < -75) {
+        prevSlide();
+      }
+      setTouchStart(0);
+      setTouchEnd(0);
+    };
 
-  const handleTouchEnd = () => {
-    if (touchStart - touchEnd > 75) {
-      nextSlide();
-    } else if (touchStart - touchEnd < -75) {
-      prevSlide();
+    const getGridCols = () => {
+      if (itemsPerView === 2) return "grid-cols-2";
+      if (itemsPerView === 3) return "grid-cols-3";
+      return `grid-cols-${itemsPerView}`;
+    };
+
+    if (itemsPerView === 5) {
+      return (
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-5 xl:gap-6">
+          {products.map((product, index) => (
+            <ProductCard
+              key={product._id}
+              product={product}
+              index={index}
+              user={user}
+            />
+          ))}
+        </div>
+      );
     }
-    setTouchStart(0);
-    setTouchEnd(0);
-  };
-  const getGridCols = () => {
-    if (itemsPerView === 1) return "grid-cols-1";
-    if (itemsPerView === 3) return "grid-cols-3";
-    return `grid-cols-${itemsPerView}`;
-  };
 
-  if (itemsPerView === 5) {
     return (
-      <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-5 xl:gap-6">
-        {products.map((product, index) => (
-          <ProductCard key={product._id} product={product} index={index} user={user} />
-        ))}
+      <div className="block">
+        <div
+          className="relative px-4"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="relative overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.3 }}
+                className={`w-full grid ${getGridCols()} gap-4`}
+              >
+                {currentProducts.map((product, idx) => (
+                  <ProductCard
+                    key={product._id}
+                    product={product}
+                    index={idx}
+                    user={user}
+                  />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Navigation Buttons */}
+          {totalSlides > 1 && (
+            <>
+              <button
+                onClick={prevSlide}
+                disabled={isTransitioning}
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 z-10"
+                aria-label="Previous products"
+              >
+                <ChevronLeft size={18} className="text-gray-700" />
+              </button>
+              <button
+                onClick={nextSlide}
+                disabled={isTransitioning}
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 z-10"
+                aria-label="Next products"
+              >
+                <ChevronRight size={18} className="text-gray-700" />
+              </button>
+            </>
+          )}
+
+          {/* Dots Indicator */}
+          {totalSlides > 1 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {Array.from({ length: totalSlides }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  disabled={isTransitioning}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    index === currentIndex
+                      ? "w-6 bg-[#5D5FEF]"
+                      : "w-1.5 bg-gray-300"
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
-  }
-
-  return (
-    <div className="block">
-      <div
-        className="relative px-4"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
-              transition={{ duration: 0.3 }}
-              className={`w-full grid ${getGridCols()} gap-4`}
-            >
-              {currentProducts.map((product, idx) => (
-                <ProductCard key={product._id} product={product} index={idx} user={user} />
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Navigation Buttons */}
-        {totalSlides > 1 && (
-          <>
-            <button
-              onClick={prevSlide}
-              disabled={isTransitioning}
-              className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 z-10"
-              aria-label="Previous products"
-            >
-              <ChevronLeft size={18} className="text-gray-700" />
-            </button>
-            <button
-              onClick={nextSlide}
-              disabled={isTransitioning}
-              className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center disabled:opacity-50 z-10"
-              aria-label="Next products"
-            >
-              <ChevronRight size={18} className="text-gray-700" />
-            </button>
-          </>
-        )}
-
-        {/* Dots Indicator */}
-        {totalSlides > 1 && (
-          <div className="flex justify-center gap-1.5 mt-4">
-            {Array.from({ length: totalSlides }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                disabled={isTransitioning}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? "w-6 bg-purple-600"
-                    : "w-1.5 bg-gray-300"
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-});
+  },
+);
 
 ResponsiveSlider.displayName = "ResponsiveSlider";
 
@@ -536,11 +551,11 @@ export default memo(function BeautySection({ user }: BeautySectionProps) {
 
   if (loading) {
     return (
-      <section className="w-full bg-gradient-to-b from-purple-50 to-pink-50 py-8 sm:py-12 md:py-16 lg:py-20 overflow-hidden relative">
+      <section className="w-full bg-gradient-to-b from-indigo-50 to-blue-50 py-8 sm:py-12 md:py-16 lg:py-20 overflow-hidden relative">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center items-center min-h-[300px]">
             <div className="text-center">
-              <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-12 h-12 border-4 border-[#5D5FEF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600">Loading beauty essentials...</p>
             </div>
           </div>
@@ -551,7 +566,7 @@ export default memo(function BeautySection({ user }: BeautySectionProps) {
 
   if (error || beautyProducts.length === 0) {
     return (
-      <section className="w-full bg-gradient-to-b from-purple-50 to-pink-50 py-8 sm:py-12 md:py-16 lg:py-20 overflow-hidden relative">
+      <section className="w-full bg-gradient-to-b from-indigo-50 to-blue-50 py-8 sm:py-12 md:py-16 lg:py-20 overflow-hidden relative">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <p className="text-gray-600">
@@ -564,24 +579,24 @@ export default memo(function BeautySection({ user }: BeautySectionProps) {
   }
 
   return (
-    <section className="w-full bg-gradient-to-b from-purple-50 to-pink-50 py-8 sm:py-12 md:py-16 lg:py-20 overflow-hidden relative">
-      {/* Background Decoration  */}
-      <div className="absolute left-0 top-0 w-64 sm:w-96 h-64 sm:h-96 bg-purple-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute right-0 bottom-0 w-64 sm:w-96 h-64 sm:h-96 bg-pink-200/30 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+    <section className="w-full bg-gradient-to-b from-indigo-50 to-blue-50 py-8 sm:py-12 md:py-16 lg:py-20 overflow-hidden relative">
+      {/* Background Decoration */}
+      <div className="absolute left-0 top-0 w-64 sm:w-96 h-64 sm:h-96 bg-indigo-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute right-0 bottom-0 w-64 sm:w-96 h-64 sm:h-96 bg-blue-200/30 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
 
-      <div className="absolute top-20 left-1/4 w-2 h-2 bg-purple-300 rounded-full animate-ping opacity-20" />
-      <div className="absolute bottom-20 right-1/4 w-3 h-3 bg-pink-300 rounded-full animate-ping opacity-20 delay-300" />
+      <div className="absolute top-20 left-1/4 w-2 h-2 bg-indigo-300 rounded-full animate-ping opacity-20" />
+      <div className="absolute bottom-20 right-1/4 w-3 h-3 bg-blue-300 rounded-full animate-ping opacity-20 delay-300" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 sm:mb-8 md:mb-12">
           <div className="text-center sm:text-left">
-            <span className="text-xs sm:text-sm font-semibold text-purple-600 uppercase tracking-wider">
+            <span className="text-xs sm:text-sm font-semibold text-[#5D5FEF] uppercase tracking-wider">
               Beauty & Glow
             </span>
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mt-2">
               Beauty{" "}
-              <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#5D5FEF] to-[#868CFF] bg-clip-text text-transparent">
                 Essentials
               </span>
             </h2>
@@ -594,7 +609,7 @@ export default memo(function BeautySection({ user }: BeautySectionProps) {
           {/* View All Link */}
           <Link
             href="/category/beauty"
-            className="inline-flex items-center gap-2 text-purple-600 font-semibold text-xs sm:text-sm md:text-base mt-4 sm:mt-0 hover:gap-3 transition-all group self-center sm:self-auto"
+            className="inline-flex items-center gap-2 text-[#5D5FEF] font-semibold text-xs sm:text-sm md:text-base mt-4 sm:mt-0 hover:gap-3 transition-all group self-center sm:self-auto"
           >
             View All Products
             <svg

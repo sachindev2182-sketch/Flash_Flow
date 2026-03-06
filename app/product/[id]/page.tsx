@@ -422,9 +422,7 @@ export default function ProductPage() {
                     disabled={isLoading}
                     className="absolute top-4 right-4 p-2.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-all z-10 disabled:opacity-50"
                   >
-                    {localWishlistLoading ? (
-                      <div className="w-5 h-5 border-2 border-[#5D5FEF] border-t-transparent rounded-full animate-spin" />
-                    ) : (
+                   
                       <Heart
                         size={20}
                         className={
@@ -433,7 +431,7 @@ export default function ProductPage() {
                             : "text-gray-700"
                         }
                       />
-                    )}
+                    
                   </motion.button>
 
                   {/* Zoom Indicator */}
@@ -563,7 +561,7 @@ export default function ProductPage() {
                     >
                       {localCartLoading ? (
                         <>
-                          <Loader2 size={18} className="animate-spin" />
+                          
                           Removing...
                         </>
                       ) : (
@@ -581,7 +579,7 @@ export default function ProductPage() {
                     >
                       {localCartLoading ? (
                         <>
-                          <Loader2 size={18} className="animate-spin" />
+                          
                           Adding...
                         </>
                       ) : (
@@ -602,9 +600,7 @@ export default function ProductPage() {
                         : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
                     }`}
                   >
-                    {localWishlistLoading ? (
-                      <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
+                    
                       <>
                         <Heart
                           size={18}
@@ -612,7 +608,7 @@ export default function ProductPage() {
                         />
                         {isWishlisted ? "Wishlisted" : "Add to Wishlist"}
                       </>
-                    )}
+                    
                   </button>
                 </div>
 

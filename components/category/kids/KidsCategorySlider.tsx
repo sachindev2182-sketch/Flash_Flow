@@ -111,7 +111,7 @@ export default memo(function KidsCategorySlider() {
               }}
               className={`h-2 sm:h-2.5 rounded-full transition-all duration-300
               ${i === index 
-                ? "w-6 sm:w-8 bg-green-500" 
+                ? "w-6 sm:w-8 bg-indigo-500" 
                 : "w-2 sm:w-2.5 bg-white/60 hover:bg-white/80"
               }`}
               aria-label={`Go to slide ${i + 1}`}
