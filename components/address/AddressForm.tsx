@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -11,8 +13,6 @@ import {
   Star,
   X,
   Loader2,
-  CheckCircle,
-  AlertCircle,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { addAddress, updateAddress } from "@/lib/redux/features/address/addressSlice";
@@ -22,43 +22,150 @@ interface AddressFormProps {
   editingAddress: any | null;
   onClose: () => void;
   isVisible: boolean;
+  onSuccess?: () => void;
 }
 
-export default function AddressForm({ user, editingAddress, onClose, isVisible }: AddressFormProps) {
+interface AddressFormValues {
+  fullName: string;
+  phoneNumber: string;
+  houseNumber: string;
+  street: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+  addressType: "home" | "work" | "other";
+}
+
+const addressValidationSchema = Yup.object<AddressFormValues>({
+  fullName: Yup.string()
+    .required("Full name is required")
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must be less than 50 characters"),
+  
+  phoneNumber: Yup.string()
+    .required("Phone number is required")
+    .matches(/^[0-9]{10}$/, "Enter a valid 10-digit phone number"),
+  
+  houseNumber: Yup.string()
+    .required("House/Flat number is required")
+    .min(2, "House/Flat number must be at least 2 characters")
+    .max(50, "House/Flat number must be less than 50 characters"),
+  
+  street: Yup.string()
+    .required("Street address is required")
+    .min(5, "Street address must be at least 5 characters")
+    .max(100, "Street address must be less than 100 characters"),
+  
+  city: Yup.string()
+    .required("City is required")
+    .min(2, "City must be at least 2 characters")
+    .max(50, "City must be less than 50 characters"),
+  
+  state: Yup.string()
+    .required("State is required")
+    .min(2, "State must be at least 2 characters")
+    .max(50, "State must be less than 50 characters"),
+  
+  pincode: Yup.string()
+    .required("Pincode is required")
+    .matches(/^[0-9]{6}$/, "Enter a valid 6-digit pincode"),
+  
+  addressType: Yup.string()
+    .oneOf(["home", "work", "other"], "Invalid address type")
+    .required("Address type is required"),
+  
+  isDefault: Yup.boolean(),
+});
+
+export default function AddressForm({ user, editingAddress, onClose, isVisible, onSuccess }: AddressFormProps) {
   const dispatch = useAppDispatch();
   const { operationLoading } = useAppSelector((state) => state.address);
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    phoneNumber: "",
-    houseNumber: "",
-    street: "",
-    city: "",
-    state: "",
-    pincode: "",
-    isDefault: false,
-    addressType: "home" as "home" | "work" | "other",
+  const userName = user?.name || user?.displayName || "";
+
+  const formik = useFormik<AddressFormValues>({
+    initialValues: {
+      fullName: "",
+      phoneNumber: "",
+      houseNumber: "",
+      street: "",
+      city: "",
+      state: "",
+      pincode: "",
+      isDefault: false,
+      addressType: "home",
+    },
+    validationSchema: addressValidationSchema,
+    validateOnChange: true,
+    validateOnBlur: true,
+    onSubmit: async (values, { resetForm }) => {
+      if (editingAddress) {
+        await dispatch(
+          updateAddress({
+            addressId: editingAddress._id,
+            addressData: values,
+          })
+        );
+        onClose();
+      } else {
+        await dispatch(addAddress(values));
+        resetForm({
+          values: {
+            fullName: userName, 
+            phoneNumber: "",
+            houseNumber: "",
+            street: "",
+            city: "",
+            state: "",
+            pincode: "",
+            isDefault: false,
+            addressType: "home",
+          },
+        });
+        if (onSuccess) {
+          onSuccess();
+        }
+      }
+    },
   });
 
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-
   useEffect(() => {
-    if (editingAddress) {
-      setFormData({
-        fullName: editingAddress.fullName,
-        phoneNumber: editingAddress.phoneNumber,
-        houseNumber: editingAddress.houseNumber,
-        street: editingAddress.street,
-        city: editingAddress.city,
-        state: editingAddress.state,
-        pincode: editingAddress.pincode,
-        isDefault: editingAddress.isDefault,
-        addressType: editingAddress.addressType,
-      });
-    } else {
-      setFormData({
-        fullName: user?.name || user?.displayName || "",
+    if (isVisible) {
+      if (editingAddress) {
+        formik.setValues({
+          fullName: editingAddress.fullName,
+          phoneNumber: editingAddress.phoneNumber,
+          houseNumber: editingAddress.houseNumber,
+          street: editingAddress.street,
+          city: editingAddress.city,
+          state: editingAddress.state,
+          pincode: editingAddress.pincode,
+          isDefault: editingAddress.isDefault,
+          addressType: editingAddress.addressType,
+        });
+      } else {
+        formik.setValues({
+          fullName: userName,
+          phoneNumber: "",
+          houseNumber: "",
+          street: "",
+          city: "",
+          state: "",
+          pincode: "",
+          isDefault: false,
+          addressType: "home",
+        });
+      }
+      formik.setTouched({});
+      formik.setErrors({});
+    }
+  }, [isVisible, editingAddress, userName]);
+
+  const handleClose = () => {
+    if (!editingAddress) {
+      formik.setValues({
+        fullName: userName, 
         phoneNumber: "",
         houseNumber: "",
         street: "",
@@ -69,108 +176,22 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
         addressType: "home",
       });
     }
-    setFormErrors({});
-    setTouched({});
-  }, [editingAddress, user]);
-
-  const validateField = (name: string, value: string): string => {
-    switch (name) {
-      case "phoneNumber":
-        if (!value) return "Phone number is required";
-        if (!/^[0-9]{10}$/.test(value)) return "Enter a valid 10-digit phone number";
-        break;
-      case "houseNumber":
-        if (!value) return "House/Flat number is required";
-        break;
-      case "street":
-        if (!value) return "Street address is required";
-        break;
-      case "city":
-        if (!value) return "City is required";
-        break;
-      case "state":
-        if (!value) return "State is required";
-        break;
-      case "pincode":
-        if (!value) return "Pincode is required";
-        if (!/^[0-9]{6}$/.test(value)) return "Enter a valid 6-digit pincode";
-        break;
-      case "fullName":
-        if (!value) return "Full name is required";
-        break;
-    }
-    return "";
+    formik.setTouched({});
+    formik.setErrors({});
+    onClose();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-
-    if (touched[name]) {
-      const error = validateField(name, value);
-      setFormErrors((prev) => ({
-        ...prev,
-        [name]: error,
-      }));
-    }
+  const isFieldTouched = (fieldName: keyof AddressFormValues): boolean => {
+    return formik.touched[fieldName] || false;
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setTouched((prev) => ({ ...prev, [name]: true }));
-    const error = validateField(name, value);
-    setFormErrors((prev) => ({
-      ...prev,
-      [name]: error,
-    }));
+  const getFieldError = (fieldName: keyof AddressFormValues): string | undefined => {
+    return formik.errors[fieldName];
   };
 
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    let isValid = true;
-
-    Object.keys(formData).forEach((key) => {
-      if (key !== "isDefault" && key !== "addressType") {
-        const error = validateField(key, formData[key as keyof typeof formData] as string);
-        if (error) {
-          errors[key] = error;
-          isValid = false;
-        }
-      }
-    });
-
-    setFormErrors(errors);
-    setTouched(
-      Object.keys(formData).reduce((acc, key) => ({ ...acc, [key]: true }), {})
-    );
-    return isValid;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    if (editingAddress) {
-      await dispatch(
-        updateAddress({
-          addressId: editingAddress._id,
-          addressData: formData,
-        })
-      );
-    } else {
-      await dispatch(addAddress(formData));
-    }
-  };
-
-  const inputClasses = (fieldName: string) => `
+  const inputClasses = (fieldName: keyof AddressFormValues) => `
     w-full px-3 py-2.5 bg-white border rounded-lg focus:outline-none transition-all text-sm 
-    ${formErrors[fieldName] && touched[fieldName]
+    ${isFieldTouched(fieldName) && getFieldError(fieldName)
       ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
       : "border-gray-200 focus:border-[#5D5FEF] focus:ring-2 focus:ring-[#5D5FEF]/20"
     }
@@ -191,14 +212,14 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
             {editingAddress ? "Edit Address" : "Add New Address"}
           </h3>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X size={18} className="text-gray-500" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={formik.handleSubmit} className="space-y-4">
           {/* Full Name */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -209,15 +230,15 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
               <input
                 type="text"
                 name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                onBlur={handleBlur}
+                value={formik.values.fullName}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={`${inputClasses("fullName")} pl-10`}
                 placeholder="Your full name"
               />
             </div>
-            {formErrors.fullName && touched.fullName && (
-              <p className="text-xs text-red-500 mt-1">{formErrors.fullName}</p>
+            {isFieldTouched("fullName") && getFieldError("fullName") && (
+              <p className="text-xs text-red-500 mt-1">{getFieldError("fullName")}</p>
             )}
           </div>
 
@@ -231,16 +252,16 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
               <input
                 type="tel"
                 name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                onBlur={handleBlur}
+                value={formik.values.phoneNumber}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 maxLength={10}
                 className={`${inputClasses("phoneNumber")} pl-10`}
                 placeholder="10-digit mobile number"
               />
             </div>
-            {formErrors.phoneNumber && touched.phoneNumber && (
-              <p className="text-xs text-red-500 mt-1">{formErrors.phoneNumber}</p>
+            {isFieldTouched("phoneNumber") && getFieldError("phoneNumber") && (
+              <p className="text-xs text-red-500 mt-1">{getFieldError("phoneNumber")}</p>
             )}
           </div>
 
@@ -252,14 +273,14 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
             <input
               type="text"
               name="houseNumber"
-              value={formData.houseNumber}
-              onChange={handleChange}
-              onBlur={handleBlur}
+              value={formik.values.houseNumber}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
               className={inputClasses("houseNumber")}
               placeholder="e.g., Flat 101, Building A"
             />
-            {formErrors.houseNumber && touched.houseNumber && (
-              <p className="text-xs text-red-500 mt-1">{formErrors.houseNumber}</p>
+            {isFieldTouched("houseNumber") && getFieldError("houseNumber") && (
+              <p className="text-xs text-red-500 mt-1">{getFieldError("houseNumber")}</p>
             )}
           </div>
 
@@ -271,14 +292,14 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
             <input
               type="text"
               name="street"
-              value={formData.street}
-              onChange={handleChange}
-              onBlur={handleBlur}
+              value={formik.values.street}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
               className={inputClasses("street")}
               placeholder="Street name, area, landmark"
             />
-            {formErrors.street && touched.street && (
-              <p className="text-xs text-red-500 mt-1">{formErrors.street}</p>
+            {isFieldTouched("street") && getFieldError("street") && (
+              <p className="text-xs text-red-500 mt-1">{getFieldError("street")}</p>
             )}
           </div>
 
@@ -291,14 +312,14 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
               <input
                 type="text"
                 name="city"
-                value={formData.city}
-                onChange={handleChange}
-                onBlur={handleBlur}
+                value={formik.values.city}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={inputClasses("city")}
                 placeholder="City"
               />
-              {formErrors.city && touched.city && (
-                <p className="text-xs text-red-500 mt-1">{formErrors.city}</p>
+              {isFieldTouched("city") && getFieldError("city") && (
+                <p className="text-xs text-red-500 mt-1">{getFieldError("city")}</p>
               )}
             </div>
             <div>
@@ -308,14 +329,14 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
               <input
                 type="text"
                 name="state"
-                value={formData.state}
-                onChange={handleChange}
-                onBlur={handleBlur}
+                value={formik.values.state}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={inputClasses("state")}
                 placeholder="State"
               />
-              {formErrors.state && touched.state && (
-                <p className="text-xs text-red-500 mt-1">{formErrors.state}</p>
+              {isFieldTouched("state") && getFieldError("state") && (
+                <p className="text-xs text-red-500 mt-1">{getFieldError("state")}</p>
               )}
             </div>
           </div>
@@ -328,15 +349,15 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
             <input
               type="text"
               name="pincode"
-              value={formData.pincode}
-              onChange={handleChange}
-              onBlur={handleBlur}
+              value={formik.values.pincode}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
               maxLength={6}
               className={inputClasses("pincode")}
               placeholder="6-digit pincode"
             />
-            {formErrors.pincode && touched.pincode && (
-              <p className="text-xs text-red-500 mt-1">{formErrors.pincode}</p>
+            {isFieldTouched("pincode") && getFieldError("pincode") && (
+              <p className="text-xs text-red-500 mt-1">{getFieldError("pincode")}</p>
             )}
           </div>
 
@@ -356,9 +377,9 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
                   <button
                     key={type.value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, addressType: type.value as any })}
+                    onClick={() => formik.setFieldValue("addressType", type.value)}
                     className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border transition-all text-sm ${
-                      formData.addressType === type.value
+                      formik.values.addressType === type.value
                         ? "border-[#5D5FEF] bg-[#5D5FEF]/10 text-[#5D5FEF]"
                         : "border-gray-200 hover:border-gray-300 text-gray-600"
                     }`}
@@ -376,8 +397,8 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
             <input
               type="checkbox"
               name="isDefault"
-              checked={formData.isDefault}
-              onChange={handleChange}
+              checked={formik.values.isDefault}
+              onChange={formik.handleChange}
               className="w-4 h-4 rounded border-gray-300 text-[#5D5FEF] focus:ring-[#5D5FEF]"
             />
             <span className="text-sm text-gray-600 flex items-center gap-1">
@@ -390,7 +411,7 @@ export default function AddressForm({ user, editingAddress, onClose, isVisible }
           <div className="flex gap-3 pt-4">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={operationLoading}
               className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-all active:scale-95 text-sm disabled:opacity-50"
             >

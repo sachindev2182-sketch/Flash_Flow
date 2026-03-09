@@ -12,17 +12,17 @@ type Slide = {
 const slides: Slide[] = [
   {
     id: 1,
-    image: "/kids_slider_1.jfif",
+    image: "/kids_slider_1.png",
     alt: "Kids' Fashion Sale"
   },
   {
     id: 2,
-    image: "/kids_slider_2.webp",
+    image: "/kids_slider_2.png",
     alt: "Kids' Party Wear"
   },
   {
     id: 3,
-    image: "/kids_slider_3.webp",
+    image: "/kids_slider_3.png",
     alt: "Kids' Casual Collection"
   },
   {

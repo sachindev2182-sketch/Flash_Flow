@@ -190,12 +190,7 @@ export default function Navbar({
                 0
               </span>
             )}
-            {/* Loading indicator */}
-            {wishlistLoading && (
-              <span className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center">
-                <div className="w-3 h-3 border-2 border-[#5D5FEF] border-t-transparent rounded-full animate-spin" />
-              </span>
-            )}
+           
           </Link>
 
           {/* Cart Icon */}

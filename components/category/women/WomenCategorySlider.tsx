@@ -22,7 +22,7 @@ const slides: Slide[] = [
   },
   {
     id: 3,
-    image: "/women_slider_3.webp",
+    image: "/women_slider_3.png",
     alt: "Women's Western Collection"
   },
   {
