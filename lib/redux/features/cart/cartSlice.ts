@@ -12,6 +12,12 @@ export interface CartItem {
   quantity: number;
 }
 
+interface DiscountInfo {
+  type: 'percentage' | 'fixed';
+  value: number;
+  description: string;
+}
+
 interface CartState {
   items: CartItem[];
   selectedItems: string[]; // Array of productIds
@@ -19,8 +25,10 @@ interface CartState {
   operationLoading: boolean;
   error: string | null;
   subtotal: number;
+  discountAmount: number;
   deliveryCharge: number;
   total: number;
+  appliedDiscounts: DiscountInfo[]; // Track applied discounts
 }
 
 const initialState: CartState = {
@@ -30,8 +38,10 @@ const initialState: CartState = {
   operationLoading: false,
   error: null,
   subtotal: 0,
+  discountAmount: 0,
   deliveryCharge: 0,
   total: 0,
+  appliedDiscounts: [],
 };
 
 // Fetch cart items
@@ -255,13 +265,82 @@ export const clearCart = createAsyncThunk(
   }
 );
 
+// Discount calculation function based on subtotal thresholds
+const calculateDiscounts = (subtotal: number) => {
+  const appliedDiscounts: DiscountInfo[] = [];
+  let discountAmount = 0;
+
+  // Discount tiers based on subtotal
+  if (subtotal >= 5000) {
+    discountAmount = 500; // ₹500 off on orders above ₹5000
+    appliedDiscounts.push({
+      type: 'fixed',
+      value: 500,
+      description: '₹500 off on orders above ₹5,000',
+    });
+  } else if (subtotal >= 3000) {
+    discountAmount = 300; // ₹300 off on orders above ₹3000
+    appliedDiscounts.push({
+      type: 'fixed',
+      value: 300,
+      description: '₹300 off on orders above ₹3,000',
+    });
+  } else if (subtotal >= 2000) {
+    discountAmount = 150; // ₹150 off on orders above ₹2000
+    appliedDiscounts.push({
+      type: 'fixed',
+      value: 150,
+      description: '₹150 off on orders above ₹2,000',
+    });
+  } else if (subtotal >= 1000) {
+    discountAmount = 50; // ₹50 off on orders above ₹1000
+    appliedDiscounts.push({
+      type: 'fixed',
+      value: 50,
+      description: '₹50 off on orders above ₹1,000',
+    });
+  }
+
+  // You can also add percentage-based discounts
+  // Example: 10% off on orders above ₹4000
+  if (subtotal >= 4000 && subtotal < 5000) {
+    const percentageDiscount = subtotal * 0.1; // 10% off
+    if (percentageDiscount > discountAmount) {
+      discountAmount = percentageDiscount;
+      appliedDiscounts.length = 0; // Clear previous discounts
+      appliedDiscounts.push({
+        type: 'percentage',
+        value: 10,
+        description: '10% off on orders above ₹4,000',
+      });
+    }
+  }
+
+  return { discountAmount, appliedDiscounts };
+};
+
 const calculateTotals = (items: CartItem[], selectedIds: string[]) => {
   const selectedItems = items.filter(item => selectedIds.includes(item.productId));
+  
+  // Calculate subtotal
   const subtotal = selectedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  
+  // Calculate discounts based on subtotal
+  const { discountAmount, appliedDiscounts } = calculateDiscounts(subtotal);
+  
+  // Calculate delivery charge (free above ₹5000)
   const deliveryCharge = subtotal > 5000 ? 0 : 99;
-  const total = subtotal + deliveryCharge;
+  
+  // Calculate final total
+  const total = subtotal - discountAmount + deliveryCharge;
 
-  return { subtotal, deliveryCharge, total };
+  return { 
+    subtotal, 
+    discountAmount,
+    deliveryCharge, 
+    total,
+    appliedDiscounts 
+  };
 };
 
 const cartSlice = createSlice({
@@ -275,10 +354,12 @@ const cartSlice = createSlice({
       } else {
         state.selectedItems.push(productId);
       }
-      const { subtotal, deliveryCharge, total } = calculateTotals(state.items, state.selectedItems);
+      const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(state.items, state.selectedItems);
       state.subtotal = subtotal;
+      state.discountAmount = discountAmount;
       state.deliveryCharge = deliveryCharge;
       state.total = total;
+      state.appliedDiscounts = appliedDiscounts;
     },
     selectAllLocal: (state, action: PayloadAction<boolean>) => {
       if (action.payload) {
@@ -286,10 +367,12 @@ const cartSlice = createSlice({
       } else {
         state.selectedItems = [];
       }
-      const { subtotal, deliveryCharge, total } = calculateTotals(state.items, state.selectedItems);
+      const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(state.items, state.selectedItems);
       state.subtotal = subtotal;
+      state.discountAmount = discountAmount;
       state.deliveryCharge = deliveryCharge;
       state.total = total;
+      state.appliedDiscounts = appliedDiscounts;
     },
     clearError: (state) => {
       state.error = null;
@@ -306,13 +389,15 @@ const cartSlice = createSlice({
         state.loading = false;
         state.items = action.payload.items || [];
         state.selectedItems = action.payload.selectedItems || [];
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
       .addCase(fetchCart.rejected, (state, action) => {
         state.loading = false;
@@ -328,13 +413,15 @@ const cartSlice = createSlice({
         state.operationLoading = false;
         state.items = action.payload.items || [];
         state.selectedItems = action.payload.selectedItems || [];
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
       .addCase(addToCart.rejected, (state, action) => {
         state.operationLoading = false;
@@ -345,44 +432,59 @@ const cartSlice = createSlice({
       .addCase(updateCartItemQuantity.fulfilled, (state, action) => {
         state.items = action.payload.items || [];
         state.selectedItems = action.payload.selectedItems || [];
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
 
       // Update size
       .addCase(updateCartItemSize.fulfilled, (state, action) => {
         state.items = action.payload.items || [];
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+          state.items,
+          state.selectedItems
+        );
+        state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
+        state.deliveryCharge = deliveryCharge;
+        state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
 
       // Remove from cart
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.items = state.items.filter(item => item.productId !== action.payload);
         state.selectedItems = state.selectedItems.filter(id => id !== action.payload);
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
 
       // Move to wishlist
       .addCase(moveToWishlist.fulfilled, (state, action) => {
         state.items = state.items.filter(item => item.productId !== action.payload);
         state.selectedItems = state.selectedItems.filter(id => id !== action.payload);
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
 
       // Toggle select
@@ -395,26 +497,30 @@ const cartSlice = createSlice({
         } else {
           state.selectedItems = state.selectedItems.filter(id => id !== productId);
         }
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
 
       // Select all
       .addCase(selectAllItems.fulfilled, (state, action) => {
         const { selected } = action.payload;
         state.selectedItems = selected ? state.items.map(item => item.productId) : [];
-        const { subtotal, deliveryCharge, total } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
           state.items,
           state.selectedItems
         );
         state.subtotal = subtotal;
+        state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.appliedDiscounts = appliedDiscounts;
       })
 
       // Clear cart
@@ -422,8 +528,10 @@ const cartSlice = createSlice({
         state.items = [];
         state.selectedItems = [];
         state.subtotal = 0;
+        state.discountAmount = 0;
         state.deliveryCharge = 0;
         state.total = 0;
+        state.appliedDiscounts = [];
       });
   },
 });

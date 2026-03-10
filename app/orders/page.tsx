@@ -110,7 +110,7 @@ export default function OrdersPage() {
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
 
   const { orders, loading } = useAppSelector((state) => state.order);
-
+  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {

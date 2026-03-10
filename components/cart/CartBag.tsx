@@ -20,6 +20,8 @@ import {
   Loader2,
   AlertTriangle,
   X,
+  Tag,
+  Sparkles,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import {
@@ -49,8 +51,10 @@ export default function CartBag({ onProceed }: CartBagProps) {
     loading,
     operationLoading,
     subtotal,
+    discountAmount,
     deliveryCharge,
     total,
+    appliedDiscounts,
   } = useAppSelector((state) => state.cart);
 
   const [localLoading, setLocalLoading] = useState<Record<string, boolean>>({});
@@ -59,6 +63,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
     type: "success" | "error";
   } | null>(null);
   const [showClearCartModal, setShowClearCartModal] = useState(false);
+  const [showDiscountDetails, setShowDiscountDetails] = useState(false);
   
   // Use ref to prevent multiple fetches
   const hasFetchedCart = useRef(false);
@@ -202,7 +207,6 @@ export default function CartBag({ onProceed }: CartBagProps) {
 
   const handleClearCart = async () => {
     if (items.length === 0) return;
-
     setShowClearCartModal(true);
   };
 
@@ -221,6 +225,46 @@ export default function CartBag({ onProceed }: CartBagProps) {
   const shouldShowSize = (category: string) => {
     return ["men", "women", "kids"].includes(category);
   };
+
+  // Calculate next discount tier
+  const getNextDiscountTier = () => {
+    if (subtotal < 1000) {
+      return {
+        amount: 1000 - subtotal,
+        discount: "₹50 off",
+        description: "Add ₹{(1000 - subtotal).toLocaleString()} more to get ₹50 off",
+      };
+    } else if (subtotal < 2000) {
+      return {
+        amount: 2000 - subtotal,
+        discount: "₹150 off",
+        description: `Add ₹{(2000 - subtotal).toLocaleString()} more to get ₹150 off`,
+      };
+    } else if (subtotal < 3000) {
+      return {
+        amount: 3000 - subtotal,
+        discount: "₹300 off",
+        description: `Add ₹{(3000 - subtotal).toLocaleString()} more to get ₹300 off`,
+      };
+    } else if (subtotal < 4000) {
+      return {
+        amount: 4000 - subtotal,
+        discount: "10% off",
+        description: `Add ₹{(4000 - subtotal).toLocaleString()} more to get 10% off`,
+      };
+    } else if (subtotal < 5000) {
+      return {
+        amount: 5000 - subtotal,
+        discount: "₹500 off + Free Delivery",
+        description: `Add ₹{(5000 - subtotal).toLocaleString()} more to get ₹500 off + Free Delivery`,
+      };
+    }
+    return null;
+  };
+
+  const nextDiscountTier = getNextDiscountTier();
+  const originalTotal = subtotal + deliveryCharge;
+  const savings = discountAmount;
 
   // Show loading state
   if (loading && items.length === 0) {
@@ -243,23 +287,34 @@ export default function CartBag({ onProceed }: CartBagProps) {
         {/* Cart Header */}
         <div className="bg-white rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            
-
+            {/* Select All Checkbox */}
             {items.length > 0 && (
-              <button
-                onClick={handleClearCart}
-                disabled={operationLoading}
-                className="text-sm text-red-500 hover:text-red-600 transition-colors flex items-center gap-1"
-              >
-                <Trash2 size={14} />
-                Clear Cart
-              </button>
+              <>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.length === items.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-gray-300 text-[#5D5FEF] focus:ring-[#5D5FEF]"
+                  />
+                  <span className="text-sm text-gray-700">Select All</span>
+                </label>
+                <button
+                  onClick={handleClearCart}
+                  disabled={operationLoading}
+                  className="text-sm text-red-500 hover:text-red-600 transition-colors flex items-center gap-1"
+                >
+                  <Trash2 size={14} />
+                  Clear Cart
+                </button>
+              </>
             )}
           </div>
           <span className="text-sm text-gray-500">
             {items.length} {items.length === 1 ? "Item" : "Items"}
           </span>
         </div>
+
 
         {/* Cart Items */}
         <AnimatePresence mode="popLayout">
@@ -280,6 +335,18 @@ export default function CartBag({ onProceed }: CartBagProps) {
                 className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
               >
                 <div className="flex gap-4">
+                  {/* Selection Checkbox */}
+                  <div className="flex items-start pt-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item.productId)}
+                      onChange={(e) =>
+                        handleToggleSelect(item.productId, e.target.checked)
+                      }
+                      className="w-4 h-4 rounded border-gray-300 text-[#5D5FEF] focus:ring-[#5D5FEF]"
+                    />
+                  </div>
+
                   {/* Product Image */}
                   <Link
                     href={`/product/${item.productId}`}
@@ -345,7 +412,6 @@ export default function CartBag({ onProceed }: CartBagProps) {
                               </option>
                             ))}
                           </select>
-                          
                         </div>
                       )}
 
@@ -380,7 +446,6 @@ export default function CartBag({ onProceed }: CartBagProps) {
                         >
                           <Plus size={14} />
                         </button>
-                        
                       </div>
 
                       {/* Action Buttons */}
@@ -395,9 +460,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
                           }`}
                           title="Move to wishlist"
                         >
-                         
-                            <Heart size={16} />
-                          
+                          <Heart size={16} />
                         </button>
                         <button
                           onClick={() => handleRemoveItem(item.productId)}
@@ -409,9 +472,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
                           }`}
                           title="Remove item"
                         >
-                          
-                            <Trash2 size={16} />
-                          
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
@@ -445,6 +506,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
         )}
       </div>
 
+      {/* Order Summary */}
       <div className="lg:col-span-1">
         <div className="bg-white rounded-xl p-5 sticky top-24">
           <h3 className="font-bold text-[#1B2559] text-lg mb-4">
@@ -452,6 +514,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
           </h3>
 
           <div className="space-y-3 mb-4">
+            {/* Subtotal */}
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">
                 Subtotal ({selectedItems.length} items)
@@ -461,6 +524,43 @@ export default function CartBag({ onProceed }: CartBagProps) {
               </span>
             </div>
 
+            {/* Discount Section */}
+            {discountAmount > 0 && (
+              <div className="space-y-2">
+                <div 
+                  className="flex justify-between text-sm text-green-600 cursor-pointer"
+                  onClick={() => setShowDiscountDetails(!showDiscountDetails)}
+                >
+                  <span className="flex items-center gap-1">
+                    <Tag size={14} />
+                    Discount
+                  </span>
+                  <span className="font-medium">
+                    -₹{discountAmount.toLocaleString()}
+                  </span>
+                </div>
+                
+                {/* Applied Discounts List */}
+                <AnimatePresence>
+                  {showDiscountDetails && appliedDiscounts.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-green-50 rounded-lg p-3 space-y-2 overflow-hidden"
+                    >
+                      {appliedDiscounts.map((discount, index) => (
+                        <div key={index} className="text-xs text-green-700">
+                          <span className="font-medium">• {discount.description}</span>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Delivery Charge */}
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 flex items-center gap-1">
                 <Truck size={14} />
@@ -475,21 +575,35 @@ export default function CartBag({ onProceed }: CartBagProps) {
               )}
             </div>
 
+            {/* Free delivery message */}
             {deliveryCharge > 0 && (
               <p className="text-xs text-gray-500">
                 Add ₹{(5000 - subtotal).toLocaleString()} more for free delivery
               </p>
             )}
 
+            {/* Total */}
             <div className="border-t border-gray-100 pt-3 mt-3">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-[#1B2559]">
                   Total Amount
                 </span>
-                <span className="text-xl font-bold text-[#5D5FEF]">
-                  ₹{total.toLocaleString()}
-                </span>
+                <div className="text-right">
+                  {discountAmount > 0 && (
+                    <p className="text-xs text-gray-500 line-through">
+                      ₹{originalTotal.toLocaleString()}
+                    </p>
+                  )}
+                  <span className="text-xl font-bold text-[#5D5FEF]">
+                    ₹{total.toLocaleString()}
+                  </span>
+                </div>
               </div>
+              {savings > 0 && (
+                <p className="text-xs text-green-600 mt-1 text-right">
+                  You save ₹{savings.toLocaleString()}
+                </p>
+              )}
             </div>
           </div>
 
@@ -508,6 +622,21 @@ export default function CartBag({ onProceed }: CartBagProps) {
               "Place Order"
             )}
           </button>
+
+          {/* Discount Tiers Info */}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1">
+              <Tag size={14} />
+              Discount Tiers
+            </p>
+            <div className="space-y-1 text-xs text-gray-600">
+              <p>• ₹1,000+ : ₹50 off</p>
+              <p>• ₹2,000+ : ₹150 off</p>
+              <p>• ₹3,000+ : ₹300 off</p>
+              <p>• ₹4,000+ : 10% off</p>
+              <p>• ₹5,000+ : ₹500 off + Free Delivery</p>
+            </div>
+          </div>
 
           {/* Shipping Info */}
           <div className="space-y-2 text-xs text-gray-500">
@@ -572,8 +701,22 @@ export default function CartBag({ onProceed }: CartBagProps) {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
-                    <span className="text-gray-600">Total value:</span>
+                    <span className="text-gray-600">Subtotal:</span>
                     <span className="font-semibold text-[#1B2559]">
+                      ₹{subtotal.toLocaleString()}
+                    </span>
+                  </div>
+                  {savings > 0 && (
+                    <div className="flex justify-between text-sm mt-2">
+                      <span className="text-gray-600">You save:</span>
+                      <span className="font-semibold text-green-600">
+                        ₹{savings.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm mt-2 pt-2 border-t border-gray-200">
+                    <span className="text-gray-600">Total:</span>
+                    <span className="font-bold text-[#1B2559]">
                       ₹{total.toLocaleString()}
                     </span>
                   </div>

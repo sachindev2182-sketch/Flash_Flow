@@ -12,6 +12,7 @@ import {
   Truck,
 } from "lucide-react";
 import OrderPreview from "./OrderPreview";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 interface CartPaymentProps {
   user: any;
@@ -40,6 +41,13 @@ export default function CartPayment({ user, selectedAddress, onBack, onComplete 
   const [selectedMethod, setSelectedMethod] = useState<string>("card");
   const [showPreview, setShowPreview] = useState(false);
   const [codConfirmed, setCodConfirmed] = useState(false);
+  const {
+    items: cartItems,
+    selectedItems,
+    subtotal,
+    deliveryCharge,
+    total,
+  } = useAppSelector((state) => state.cart);
 
   const handleProceedToPreview = () => {
     if (selectedMethod === "cod" && !codConfirmed) return;
@@ -189,11 +197,11 @@ export default function CartPayment({ user, selectedAddress, onBack, onComplete 
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Order Total</span>
-              <span className="font-medium text-[#1B2559]">₹4,599</span>
+              <span className="font-medium text-[#1B2559]">₹{total.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Delivery</span>
-              <span className="font-medium text-green-600">Free</span>
+              <span className="font-medium text-green-600">₹{deliveryCharge.toLocaleString()}</span>
             </div>
             {selectedMethod === "cod" && (
               <div className="flex justify-between text-sm">
@@ -204,7 +212,7 @@ export default function CartPayment({ user, selectedAddress, onBack, onComplete 
             <div className="border-t border-gray-100 pt-3">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-[#1B2559]">Total to Pay</span>
-                <span className="text-xl font-bold text-[#5D5FEF]">₹4,599</span>
+                <span className="text-xl font-bold text-[#5D5FEF]">₹{total.toLocaleString()}</span>
               </div>
             </div>
           </div>
