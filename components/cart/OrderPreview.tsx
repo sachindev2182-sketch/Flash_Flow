@@ -201,16 +201,16 @@ export default function OrderPreview({
     );
   }
 
-  if (processing && !currentOrder) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="text-center">
-          <Loader2 size={32} className="text-[#5D5FEF] animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-600">Creating your order...</p>
-        </div>
-      </div>
-    );
-  }
+  // if (processing && !currentOrder) {
+  //   return (
+  //     <div className="flex justify-center items-center py-12">
+  //       <div className="text-center">
+  //         <Loader2 size={32} className="text-[#5D5FEF] animate-spin mx-auto mb-4" />
+  //         <p className="text-sm text-gray-600">Creating your order...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (!currentOrder && !processing) {
     return (
@@ -354,7 +354,6 @@ export default function OrderPreview({
             >
               {processing ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" />
                   Processing...
                 </>
               ) : (

@@ -297,13 +297,13 @@ export default function CartAddress({
     resetForm();
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex justify-center items-center min-h-[400px]">
+  //       <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">

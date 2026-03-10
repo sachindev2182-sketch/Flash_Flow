@@ -244,7 +244,6 @@ export default function OrdersPage() {
 
           {loading && orders.length === 0 ? (
             <div className="flex justify-center items-center min-h-[400px]">
-              <Loader2 size={40} className="text-[#5D5FEF] animate-spin" />
             </div>
           ) : orders.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center shadow-sm">
