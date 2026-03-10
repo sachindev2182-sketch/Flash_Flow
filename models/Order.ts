@@ -33,6 +33,8 @@ export interface IOrder extends Document {
   subtotal: number;
   deliveryCharge: number;
   totalAmount: number;
+  promoCode?: string;
+  promoDiscount: number;
   paymentId?: string;
   stripePaymentIntentId?: string;
   createdAt: Date;
@@ -133,6 +135,13 @@ const orderSchema = new Schema<IOrder>(
     totalAmount: {
       type: Number,
       required: true,
+    },
+    promoCode: {
+      type: String,
+    },
+    promoDiscount: {
+      type: Number,
+      default: 0,
     },
     paymentId: {
       type: String,

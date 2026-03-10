@@ -9,6 +9,7 @@ export interface IPromoCode extends Document {
   usageLimit: number;
   usedCount: number;
   userUsageLimit: number;
+  usedBy?: { userId: mongoose.Types.ObjectId; count: number }[];
   startDate: Date;
   expiryDate: Date;
   applicableProducts?: mongoose.Types.ObjectId[];
@@ -62,6 +63,18 @@ const promoCodeSchema = new Schema<IPromoCode>(
       required: [true, "User usage limit is required"],
       min: [1, "User usage limit must be greater than 0"],
     },
+    usedBy: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      count: {
+        type: Number,
+        default: 1,
+        min: [1, "Count must be greater than 0"],
+      },
+    }],
     startDate: {
       type: Date,
       required: [true, "Start date is required"],
@@ -84,7 +97,7 @@ const promoCodeSchema = new Schema<IPromoCode>(
       type: Boolean,
       default: true,
     },
-  } as any,
+  },
   {
     timestamps: true,
   }

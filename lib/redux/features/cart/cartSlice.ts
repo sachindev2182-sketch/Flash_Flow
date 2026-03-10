@@ -29,6 +29,9 @@ interface CartState {
   deliveryCharge: number;
   total: number;
   appliedDiscounts: DiscountInfo[]; // Track applied discounts
+  promoCode: string | null;
+  promoDiscount: number;
+  finalTotal: number;
 }
 
 const initialState: CartState = {
@@ -42,6 +45,9 @@ const initialState: CartState = {
   deliveryCharge: 0,
   total: 0,
   appliedDiscounts: [],
+  promoCode: null,
+  promoDiscount: 0,
+  finalTotal: 0,
 };
 
 // Fetch cart items
@@ -265,6 +271,46 @@ export const clearCart = createAsyncThunk(
   }
 );
 
+// Apply promo code
+export const applyPromoCode = createAsyncThunk(
+  'cart/applyPromo',
+  async ({ code, cartTotal }: { code: string; cartTotal: number }, { rejectWithValue }) => {
+    try {
+      const response = await fetch('/api/promos/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ code, cartTotal }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to apply promo code');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to apply promo code');
+    }
+  }
+);
+
+// Remove promo code
+export const removePromoCode = createAsyncThunk(
+  'cart/removePromo',
+  async (_, { rejectWithValue }) => {
+    try {
+      // For now, we'll just clear it locally. In a real app, you might want to call an API
+      return true;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to remove promo code');
+    }
+  }
+);
+
 // Discount calculation function based on subtotal thresholds
 const calculateDiscounts = (subtotal: number) => {
   const appliedDiscounts: DiscountInfo[] = [];
@@ -319,7 +365,7 @@ const calculateDiscounts = (subtotal: number) => {
   return { discountAmount, appliedDiscounts };
 };
 
-const calculateTotals = (items: CartItem[], selectedIds: string[]) => {
+const calculateTotals = (items: CartItem[], selectedIds: string[], promoDiscount: number = 0) => {
   const selectedItems = items.filter(item => selectedIds.includes(item.productId));
   
   // Calculate subtotal
@@ -331,14 +377,16 @@ const calculateTotals = (items: CartItem[], selectedIds: string[]) => {
   // Calculate delivery charge (free above ₹5000)
   const deliveryCharge = subtotal > 5000 ? 0 : 99;
   
-  // Calculate final total
+  // Calculate final total (subtotal - product discounts - promo discount + delivery)
   const total = subtotal - discountAmount + deliveryCharge;
+  const finalTotal = total - promoDiscount;
 
   return { 
     subtotal, 
     discountAmount,
     deliveryCharge, 
     total,
+    finalTotal,
     appliedDiscounts 
   };
 };
@@ -354,11 +402,12 @@ const cartSlice = createSlice({
       } else {
         state.selectedItems.push(productId);
       }
-      const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(state.items, state.selectedItems);
+      const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(state.items, state.selectedItems, state.promoDiscount);
       state.subtotal = subtotal;
       state.discountAmount = discountAmount;
       state.deliveryCharge = deliveryCharge;
       state.total = total;
+      state.finalTotal = finalTotal;
       state.appliedDiscounts = appliedDiscounts;
     },
     selectAllLocal: (state, action: PayloadAction<boolean>) => {
@@ -367,11 +416,12 @@ const cartSlice = createSlice({
       } else {
         state.selectedItems = [];
       }
-      const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(state.items, state.selectedItems);
+      const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(state.items, state.selectedItems, state.promoDiscount);
       state.subtotal = subtotal;
       state.discountAmount = discountAmount;
       state.deliveryCharge = deliveryCharge;
       state.total = total;
+      state.finalTotal = finalTotal;
       state.appliedDiscounts = appliedDiscounts;
     },
     clearError: (state) => {
@@ -389,14 +439,16 @@ const cartSlice = createSlice({
         state.loading = false;
         state.items = action.payload.items || [];
         state.selectedItems = action.payload.selectedItems || [];
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
       .addCase(fetchCart.rejected, (state, action) => {
@@ -413,14 +465,16 @@ const cartSlice = createSlice({
         state.operationLoading = false;
         state.items = action.payload.items || [];
         state.selectedItems = action.payload.selectedItems || [];
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
       .addCase(addToCart.rejected, (state, action) => {
@@ -432,28 +486,32 @@ const cartSlice = createSlice({
       .addCase(updateCartItemQuantity.fulfilled, (state, action) => {
         state.items = action.payload.items || [];
         state.selectedItems = action.payload.selectedItems || [];
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
 
       // Update size
       .addCase(updateCartItemSize.fulfilled, (state, action) => {
         state.items = action.payload.items || [];
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
 
@@ -461,14 +519,16 @@ const cartSlice = createSlice({
       .addCase(removeFromCart.fulfilled, (state, action) => {
         state.items = state.items.filter(item => item.productId !== action.payload);
         state.selectedItems = state.selectedItems.filter(id => id !== action.payload);
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
 
@@ -497,14 +557,16 @@ const cartSlice = createSlice({
         } else {
           state.selectedItems = state.selectedItems.filter(id => id !== productId);
         }
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
 
@@ -512,14 +574,16 @@ const cartSlice = createSlice({
       .addCase(selectAllItems.fulfilled, (state, action) => {
         const { selected } = action.payload;
         state.selectedItems = selected ? state.items.map(item => item.productId) : [];
-        const { subtotal, discountAmount, deliveryCharge, total, appliedDiscounts } = calculateTotals(
+        const { subtotal, discountAmount, deliveryCharge, total, finalTotal, appliedDiscounts } = calculateTotals(
           state.items,
-          state.selectedItems
+          state.selectedItems,
+          state.promoDiscount
         );
         state.subtotal = subtotal;
         state.discountAmount = discountAmount;
         state.deliveryCharge = deliveryCharge;
         state.total = total;
+        state.finalTotal = finalTotal;
         state.appliedDiscounts = appliedDiscounts;
       })
 
@@ -531,7 +595,35 @@ const cartSlice = createSlice({
         state.discountAmount = 0;
         state.deliveryCharge = 0;
         state.total = 0;
+        state.finalTotal = 0;
         state.appliedDiscounts = [];
+        state.promoCode = null;
+        state.promoDiscount = 0;
+      })
+
+      // Apply promo code
+      .addCase(applyPromoCode.pending, (state) => {
+        state.operationLoading = true;
+        state.error = null;
+      })
+      .addCase(applyPromoCode.fulfilled, (state, action) => {
+        state.operationLoading = false;
+        state.promoCode = action.payload.promoCode;
+        state.promoDiscount = action.payload.discountAmount;
+        const { finalTotal } = calculateTotals(state.items, state.selectedItems, state.promoDiscount);
+        state.finalTotal = finalTotal;
+      })
+      .addCase(applyPromoCode.rejected, (state, action) => {
+        state.operationLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Remove promo code
+      .addCase(removePromoCode.fulfilled, (state) => {
+        state.promoCode = null;
+        state.promoDiscount = 0;
+        const { finalTotal } = calculateTotals(state.items, state.selectedItems, 0);
+        state.finalTotal = finalTotal;
       });
   },
 });

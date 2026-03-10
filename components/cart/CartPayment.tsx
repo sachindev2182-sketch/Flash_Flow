@@ -47,6 +47,7 @@ export default function CartPayment({ user, selectedAddress, onBack, onComplete 
     subtotal,
     deliveryCharge,
     total,
+    finalTotal,
   } = useAppSelector((state) => state.cart);
 
   const handleProceedToPreview = () => {
@@ -197,7 +198,7 @@ export default function CartPayment({ user, selectedAddress, onBack, onComplete 
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Order Total</span>
-              <span className="font-medium text-[#1B2559]">₹{total.toLocaleString()}</span>
+              <span className="font-medium text-[#1B2559]">₹{subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Delivery</span>
@@ -212,7 +213,7 @@ export default function CartPayment({ user, selectedAddress, onBack, onComplete 
             <div className="border-t border-gray-100 pt-3">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-[#1B2559]">Total to Pay</span>
-                <span className="text-xl font-bold text-[#5D5FEF]">₹{total.toLocaleString()}</span>
+                <span className="text-xl font-bold text-[#5D5FEF]">₹{finalTotal.toLocaleString()}</span>
               </div>
             </div>
           </div>

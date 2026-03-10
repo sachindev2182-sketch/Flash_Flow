@@ -33,6 +33,8 @@ import {
   toggleSelectItem,
   selectAllItems,
   clearCart,
+  applyPromoCode,
+  removePromoCode,
   CartItem,
 } from "@/lib/redux/features/cart/cartSlice";
 import { addToWishlist } from "@/lib/redux/features/wishlist/wishlistSlice";
@@ -54,7 +56,10 @@ export default function CartBag({ onProceed }: CartBagProps) {
     discountAmount,
     deliveryCharge,
     total,
+    finalTotal,
     appliedDiscounts,
+    promoCode,
+    promoDiscount,
   } = useAppSelector((state) => state.cart);
 
   const [localLoading, setLocalLoading] = useState<Record<string, boolean>>({});
@@ -64,6 +69,9 @@ export default function CartBag({ onProceed }: CartBagProps) {
   } | null>(null);
   const [showClearCartModal, setShowClearCartModal] = useState(false);
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
   
   // Use ref to prevent multiple fetches
   const hasFetchedCart = useRef(false);
@@ -218,6 +226,42 @@ export default function CartBag({ onProceed }: CartBagProps) {
       showToast("Cart cleared successfully");
     } catch (error) {
       showToast("Failed to clear cart", "error");
+    }
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!promoInput.trim()) {
+      setPromoError("Please enter a promo code");
+      return;
+    }
+
+    setPromoError(null);
+    setPromoSuccess(null);
+
+    try {
+      const result = await dispatch(applyPromoCode({
+        code: promoInput.trim().toUpperCase(),
+        cartTotal: total
+      }));
+
+      if (applyPromoCode.fulfilled.match(result)) {
+        setPromoSuccess(`Promo code "${promoInput.toUpperCase()}" applied successfully!`);
+        setPromoInput("");
+        showToast("Promo code applied successfully");
+      }
+    } catch (error) {
+      const errorMessage = (error as any)?.message || "Failed to apply promo code";
+      setPromoError(errorMessage);
+    }
+  };
+
+  const handleRemovePromoCode = async () => {
+    try {
+      await dispatch(removePromoCode());
+      setPromoSuccess(null);
+      showToast("Promo code removed");
+    } catch (error) {
+      showToast("Failed to remove promo code", "error");
     }
   };
 
@@ -582,6 +626,19 @@ export default function CartBag({ onProceed }: CartBagProps) {
               </p>
             )}
 
+            {/* Promo Code Discount */}
+            {promoDiscount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span className="flex items-center gap-1">
+                  <Sparkles size={14} />
+                  Promo Code ({promoCode})
+                </span>
+                <span className="font-medium">
+                  -₹{promoDiscount.toLocaleString()}
+                </span>
+              </div>
+            )}
+
             {/* Total */}
             <div className="border-t border-gray-100 pt-3 mt-3">
               <div className="flex justify-between items-center">
@@ -589,22 +646,88 @@ export default function CartBag({ onProceed }: CartBagProps) {
                   Total Amount
                 </span>
                 <div className="text-right">
-                  {discountAmount > 0 && (
+                  {discountAmount > 0 || promoDiscount > 0 ? (
                     <p className="text-xs text-gray-500 line-through">
                       ₹{originalTotal.toLocaleString()}
                     </p>
-                  )}
+                  ) : null}
                   <span className="text-xl font-bold text-[#5D5FEF]">
-                    ₹{total.toLocaleString()}
+                    ₹{finalTotal.toLocaleString()}
                   </span>
                 </div>
               </div>
-              {savings > 0 && (
+              {(discountAmount > 0 || promoDiscount > 0) && (
                 <p className="text-xs text-green-600 mt-1 text-right">
-                  You save ₹{savings.toLocaleString()}
+                  You save ₹{(discountAmount + promoDiscount).toLocaleString()}
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Promo Code Section */}
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-[#1B2559] mb-3 flex items-center gap-2">
+              <Tag size={16} />
+              Have a Promo Code?
+            </h4>
+
+            {promoCode ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={16} className="text-green-600" />
+                    <span className="text-sm font-medium text-green-700">
+                      {promoCode} applied
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleRemovePromoCode}
+                    disabled={operationLoading}
+                    className="text-xs text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                    placeholder="Enter promo code"
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#5D5FEF] focus:ring-1 focus:ring-[#5D5FEF]"
+                    disabled={operationLoading}
+                  />
+                  <button
+                    onClick={handleApplyPromoCode}
+                    disabled={operationLoading || !promoInput.trim()}
+                    className="px-4 py-2 bg-[#5D5FEF] text-white text-sm font-medium rounded-lg hover:bg-[#4B4DC9] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {operationLoading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      "Apply"
+                    )}
+                  </button>
+                </div>
+
+                {promoError && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle size={12} />
+                    {promoError}
+                  </p>
+                )}
+
+                {promoSuccess && (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle size={12} />
+                    {promoSuccess}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Place Order Button */}

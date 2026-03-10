@@ -46,6 +46,9 @@ export default function OrderPreview({
     subtotal,
     deliveryCharge,
     total,
+    finalTotal,
+    promoCode,
+    promoDiscount,
   } = useAppSelector((state) => state.cart);
   const { currentOrder, processing, clientSecret, error } = useAppSelector(
     (state) => state.order,
@@ -110,7 +113,9 @@ export default function OrderPreview({
       })),
       subtotal,
       deliveryCharge,
-      totalAmount: total,
+      totalAmount: finalTotal,
+      promoCode: promoCode || undefined,
+      promoDiscount: promoDiscount || 0,
     };
 
     const result = await dispatch(createOrder(orderData));
@@ -182,7 +187,7 @@ export default function OrderPreview({
             Order ID: {currentOrder?.orderId}
           </p>
           <p className="text-sm text-gray-600 mt-1">
-            Total Amount: ₹{total.toLocaleString()}
+            Total Amount: ₹{finalTotal.toLocaleString()}
           </p>
         </div>
         <Link
@@ -284,11 +289,17 @@ export default function OrderPreview({
               </span>
             )}
           </div>
+          {promoDiscount > 0 && (
+            <div className="flex justify-between text-sm text-green-600">
+              <span>Promo Discount ({promoCode})</span>
+              <span>-₹{promoDiscount.toLocaleString()}</span>
+            </div>
+          )}
           <div className="border-t border-gray-100 pt-2 mt-2">
             <div className="flex justify-between">
               <span className="font-semibold text-[#1B2559]">Total</span>
               <span className="text-xl font-bold text-[#5D5FEF]">
-                ₹{total.toLocaleString()}
+                ₹{finalTotal.toLocaleString()}
               </span>
             </div>
           </div>
