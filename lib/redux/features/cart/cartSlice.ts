@@ -18,6 +18,20 @@ interface DiscountInfo {
   description: string;
 }
 
+export interface SuggestedPromo {
+  id: string;
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount?: number;
+  description: string;
+  userCanUse: boolean;
+  userUsageCount: number;
+  userUsageLimit: number;
+  expiryDate: string;
+}
+
 interface CartState {
   items: CartItem[];
   selectedItems: string[]; // Array of productIds
@@ -32,6 +46,8 @@ interface CartState {
   promoCode: string | null;
   promoDiscount: number;
   finalTotal: number;
+  suggestedPromos: SuggestedPromo[];
+  loadingPromos: boolean;
 }
 
 const initialState: CartState = {
@@ -48,6 +64,8 @@ const initialState: CartState = {
   promoCode: null,
   promoDiscount: 0,
   finalTotal: 0,
+  suggestedPromos: [],
+  loadingPromos: false,
 };
 
 // Fetch cart items
@@ -307,6 +325,29 @@ export const removePromoCode = createAsyncThunk(
       return true;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to remove promo code');
+    }
+  }
+);
+
+export const fetchSuggestedPromos = createAsyncThunk(
+  'cart/fetchSuggestedPromos',
+  async ({ minOrder, category }: { minOrder?: number; category?: string } = {}, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams();
+      if (minOrder) params.append('minOrder', minOrder.toString());
+      if (category) params.append('category', category);
+      params.append('limit', '10');
+
+      const response = await fetch(`/api/promos/active?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch promo suggestions');
+      }
+
+      const data = await response.json();
+      return data.promos;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch promo suggestions');
     }
   }
 );
@@ -624,7 +665,23 @@ const cartSlice = createSlice({
         state.promoDiscount = 0;
         const { finalTotal } = calculateTotals(state.items, state.selectedItems, 0);
         state.finalTotal = finalTotal;
-      });
+      })
+
+      // Fetch suggested promos
+      .addCase(fetchSuggestedPromos.pending, (state) => {
+  state.loadingPromos = true;
+  state.error = null;
+})
+.addCase(fetchSuggestedPromos.fulfilled, (state, action) => {
+  state.loadingPromos = false;
+  state.suggestedPromos = action.payload;
+})
+.addCase(fetchSuggestedPromos.rejected, (state, action) => {
+  state.loadingPromos = false;
+  state.suggestedPromos = [];
+  state.error = action.payload as string || 'Failed to fetch promo suggestions';
+  console.error('Failed to fetch promos:', action.payload);
+});
   },
 });
 

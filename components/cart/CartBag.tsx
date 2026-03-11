@@ -36,12 +36,140 @@ import {
   applyPromoCode,
   removePromoCode,
   CartItem,
+  fetchSuggestedPromos,
 } from "@/lib/redux/features/cart/cartSlice";
 import { addToWishlist } from "@/lib/redux/features/wishlist/wishlistSlice";
 
 interface CartBagProps {
   onProceed: () => void;
 }
+
+// Move SuggestedPromos OUTSIDE the main component
+const SuggestedPromos = ({ onPromoSelect }: { onPromoSelect: (code: string) => Promise<void> }) => {
+  const dispatch = useAppDispatch();
+  const { suggestedPromos, loadingPromos, subtotal } = useAppSelector((state) => state.cart);
+  const [showAllPromos, setShowAllPromos] = useState(false);
+  const hasFetchedPromos = useRef(false);
+
+  useEffect(() => {
+    // Fetch promos only once on component mount
+    if (!hasFetchedPromos.current) {
+      hasFetchedPromos.current = true;
+      dispatch(fetchSuggestedPromos({})); // Don't pass minOrder to avoid re-fetching
+    }
+  }, [dispatch]); // Empty dependency array - only runs once
+
+  // Filter promos based on eligibility using current subtotal
+  const eligiblePromos = suggestedPromos.filter(promo => 
+    promo.minOrderAmount <= subtotal && promo.userCanUse
+  );
+  
+  const displayPromos = showAllPromos 
+    ? suggestedPromos 
+    : eligiblePromos.slice(0, 3);
+
+  if (suggestedPromos.length === 0 && !loadingPromos) return null;
+
+  return (
+    <div className="mb-4 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-medium text-[#1B2559] flex items-center gap-2">
+          <Sparkles size={16} className="text-[#5D5FEF]" />
+          Available Offers
+        </h4>
+        {suggestedPromos.length > 3 && (
+          <button
+            onClick={() => setShowAllPromos(!showAllPromos)}
+            className="text-xs text-[#5D5FEF] hover:underline"
+          >
+            {showAllPromos ? 'Show Less' : 'View All'}
+          </button>
+        )}
+      </div>
+
+      {loadingPromos ? (
+        <div className="flex justify-center py-4">
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {displayPromos.map((promo) => {
+            const isEligible = promo.minOrderAmount <= subtotal && promo.userCanUse;
+            
+            return (
+              <motion.div
+                key={promo.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`p-3 rounded-lg border ${
+                  isEligible
+                    ? 'bg-white border-green-200 hover:shadow-md cursor-pointer'
+                    : 'bg-gray-50 border-gray-200 opacity-75'
+                } transition-all`}
+                onClick={async () => {
+                  if (isEligible) {
+                    await onPromoSelect(promo.code);
+                  }
+                }}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-[#5D5FEF]">
+                      {promo.code}
+                    </span>
+                    {isEligible && (
+                      <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                        Eligible
+                      </span>
+                    )}
+                    {!promo.userCanUse && (
+                      <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full">
+                        Used {promo.userUsageCount}/{promo.userUsageLimit}
+                      </span>
+                    )}
+                  </div>
+                  {isEligible && (
+                    <Tag size={14} className="text-green-500" />
+                  )}
+                </div>
+                
+                <p className="text-xs text-gray-600 mb-1">
+                  {promo.description}
+                </p>
+                
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500">
+                    Min. order: ₹{promo.minOrderAmount.toLocaleString()}
+                  </span>
+                  {promo.maxDiscountAmount && (
+                    <span className="text-gray-500">
+                      Max: ₹{promo.maxDiscountAmount}
+                    </span>
+                  )}
+                </div>
+
+                {!isEligible && promo.minOrderAmount > subtotal && (
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5">
+                      <div 
+                        className="bg-[#5D5FEF] h-1.5 rounded-full"
+                        style={{ 
+                          width: `${Math.min(100, (subtotal / promo.minOrderAmount) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Add ₹{(promo.minOrderAmount - subtotal).toLocaleString()} more to unlock
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function CartBag({ onProceed }: CartBagProps) {
   const router = useRouter();
@@ -272,6 +400,33 @@ export default function CartBag({ onProceed }: CartBagProps) {
     }
   };
 
+  const handlePromoSelect = async (code: string) => {
+    setPromoInput(code);
+    setPromoError(null);
+    setPromoSuccess(null);
+
+    try {
+      const result = await dispatch(
+        applyPromoCode({
+          code: code.trim().toUpperCase(),
+          cartTotal: total,
+        }),
+      );
+
+      if (applyPromoCode.fulfilled.match(result)) {
+        setPromoSuccess(`Promo code "${code.toUpperCase()}" applied successfully!`);
+        setPromoInput("");
+        showToast("Promo code applied successfully");
+      } else if (applyPromoCode.rejected.match(result)) {
+        const msg = (result.payload as string) || result.error?.message || "Failed to apply promo code";
+        setPromoError(msg);
+      }
+    } catch (err) {
+      const errorMessage = (err as any)?.message || "Failed to apply promo code";
+      setPromoError(errorMessage);
+    }
+  };
+
   // Check if item should show size
   const shouldShowSize = (category: string) => {
     return ["men", "women", "kids"].includes(category);
@@ -289,25 +444,25 @@ export default function CartBag({ onProceed }: CartBagProps) {
       return {
         amount: 2000 - subtotal,
         discount: "₹150 off",
-        description: `Add ₹{(2000 - subtotal).toLocaleString()} more to get ₹150 off`,
+        description: `Add ₹${(2000 - subtotal).toLocaleString()} more to get ₹150 off`,
       };
     } else if (subtotal < 3000) {
       return {
         amount: 3000 - subtotal,
         discount: "₹300 off",
-        description: `Add ₹{(3000 - subtotal).toLocaleString()} more to get ₹300 off`,
+        description: `Add ₹${(3000 - subtotal).toLocaleString()} more to get ₹300 off`,
       };
     } else if (subtotal < 4000) {
       return {
         amount: 4000 - subtotal,
         discount: "10% off",
-        description: `Add ₹{(4000 - subtotal).toLocaleString()} more to get 10% off`,
+        description: `Add ₹${(4000 - subtotal).toLocaleString()} more to get 10% off`,
       };
     } else if (subtotal < 5000) {
       return {
         amount: 5000 - subtotal,
         discount: "₹500 off + Free Delivery",
-        description: `Add ₹{(5000 - subtotal).toLocaleString()} more to get ₹500 off + Free Delivery`,
+        description: `Add ₹${(5000 - subtotal).toLocaleString()} more to get ₹500 off + Free Delivery`,
       };
     }
     return null;
@@ -317,20 +472,16 @@ export default function CartBag({ onProceed }: CartBagProps) {
   const originalTotal = subtotal + deliveryCharge;
   const savings = discountAmount;
 
-  // // Show loading state
-  // if (loading && items.length === 0) {
-  //   return (
-  //     <div className="flex justify-center items-center min-h-[400px]">
-  //       <div className="text-center">
-  //         <Loader2
-  //           size={40}
-  //           className="text-[#5D5FEF] animate-spin mx-auto mb-4"
-  //         />
-  //         <p className="text-gray-600">Loading your cart...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  // Show loading state
+  if (loading && items.length === 0) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-gray-600">Loading your cart...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -733,7 +884,7 @@ export default function CartBag({ onProceed }: CartBagProps) {
               </div>
             )}
           </div>
-
+             <SuggestedPromos onPromoSelect={handlePromoSelect} />
           {/* Place Order Button */}
           <button
             onClick={onProceed}
@@ -863,7 +1014,6 @@ export default function CartBag({ onProceed }: CartBagProps) {
                   >
                     {operationLoading ? (
                       <>
-                        <Loader2 size={14} className="animate-spin" />
                         Clearing...
                       </>
                     ) : (
