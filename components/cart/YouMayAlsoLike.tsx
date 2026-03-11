@@ -274,17 +274,7 @@ export default function YouMayAlsoLike() {
     }
   };
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <div className="flex justify-center items-center">
-          <Loader2 size={32} className="text-[#5D5FEF] animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
+ 
   if (error || recommendedProducts.length === 0) {
     return null;
   }

@@ -400,7 +400,7 @@ export default function ProductPage() {
         onLogout={handleLogout}
       />
 
-      <main className="pt-20 sm:pt-24 pb-12 sm:pb-16">
+      <main className="flex-grow pt-24 sm:pt-28 pb-24 lg:pb-28">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">

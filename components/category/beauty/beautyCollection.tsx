@@ -146,9 +146,9 @@ const SubcategoriesSlider = memo(({
 
   if (!isMobile) {
     return (
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Shop by Category</h3>
-        <div className="grid grid-cols-4 gap-3">
+      <div className="mb-8">
+        <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-700 mb-4">Shop by Category</h3>
+        <div className="grid grid-cols-4 gap-4">
           {subcategories.map((sub) => (
             <SubcategoryCard
               key={sub.name}
@@ -164,9 +164,9 @@ const SubcategoriesSlider = memo(({
   }
 
   return (
-    <div className="mb-6 relative">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">Shop by Category</h3>
+    <div className="mb-8 relative">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-700">Shop by Category</h3>
         
         <div className="flex items-center gap-1">
           <span className="text-xs text-gray-400">Swipe →</span>
@@ -200,7 +200,7 @@ const SubcategoriesSlider = memo(({
           className="overflow-x-auto scrollbar-hide pb-2 -mx-2 px-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <AnimatePresence mode="popLayout">
               {subcategories.map((sub) => (
                 <SubcategoryCard
@@ -216,8 +216,8 @@ const SubcategoriesSlider = memo(({
         </div>
 
         {/* Scroll Progress Indicator */}
-        <div className="flex justify-center mt-2">
-          <div className="flex gap-1">
+        <div className="flex justify-center mt-3">
+          <div className="flex gap-1.5">
             {subcategories.map((_, index) => {
               const activeIndex = selectedSubcategory 
                 ? subcategories.findIndex(s => s.name === selectedSubcategory)
@@ -227,10 +227,10 @@ const SubcategoriesSlider = memo(({
                 return (
                   <div
                     key={index}
-                    className={`h-1 rounded-full transition-all duration-300 ${
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
                       index === activeIndex
-                        ? 'w-6 bg-[#5D5FEF]'
-                        : 'w-1 bg-gray-300'
+                        ? 'w-8 bg-[#5D5FEF]'
+                        : 'w-2 bg-gray-300'
                     }`}
                   />
                 );
@@ -586,7 +586,7 @@ const Pagination = memo(
     if (totalPages <= 1) return null;
 
     return (
-      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 sm:mt-8">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-8 sm:mt-10">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1 || loading}
@@ -744,7 +744,7 @@ export default memo(function BeautyCollection({ user }: BeautyCollectionProps) {
 
   if (error) {
     return (
-      <section className="w-full py-4 sm:py-6">
+      <section className="w-full py-4 sm:py-6 lg:py-8">
         <div className="text-center py-8">
           <p className="text-sm text-red-500 mb-3">{error}</p>
           <button
@@ -766,14 +766,14 @@ export default memo(function BeautyCollection({ user }: BeautyCollectionProps) {
   }
 
   return (
-    <section className="w-full py-3 sm:py-4">
+    <section className="w-full py-8 sm:py-12 lg:py-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-gray-900">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
             Beauty & Personal Care
           </h2>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm sm:text-base text-gray-500 mt-1">
             {beautyPagination.totalProducts} products
             {selectedSubcategory && ` in ${selectedSubcategory}`}
           </p>
@@ -783,7 +783,7 @@ export default memo(function BeautyCollection({ user }: BeautyCollectionProps) {
         {selectedSubcategory && (
           <button
             onClick={() => setSelectedSubcategory(null)}
-            className="text-xs text-[#5D5FEF] font-medium hover:underline"
+            className="text-sm text-[#5D5FEF] font-medium hover:underline"
           >
             Clear Filter
           </button>
@@ -798,13 +798,12 @@ export default memo(function BeautyCollection({ user }: BeautyCollectionProps) {
       />
 
       {/* Products Grid */}
-      <div id="products-grid" className="mt-8 sm:mt-10">
+      <div id="products-grid" className="mt-10 sm:mt-12 lg:mt-16">
         {loading && beautyProducts.length === 0 ? (
           <div className="flex justify-center items-center min-h-[400px]">
-            <Loader2 size={40} className="text-[#5D5FEF] animate-spin" />
           </div>
         ) : beautyProducts.length === 0 ? (
-          <div className="text-center py-8 bg-white rounded-lg">
+          <div className="text-center py-12 bg-white rounded-lg">
             <p className="text-gray-500">No products found in this category</p>
           </div>
         ) : (
@@ -815,7 +814,7 @@ export default memo(function BeautyCollection({ user }: BeautyCollectionProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5  gap-4 sm:gap-5"
             >
               {beautyProducts.map((product, index) => {
                 const productId = product?.id || (product as any)?._id;
