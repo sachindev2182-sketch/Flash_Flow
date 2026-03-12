@@ -273,7 +273,7 @@ const ProductCard = memo(
                 <button
                   onClick={handleRemoveFromCart}
                   disabled={localCartLoading || !user}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-[#1B2559] hover:bg-[#253275] text-white py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <>
                     <Trash2 size={14} />

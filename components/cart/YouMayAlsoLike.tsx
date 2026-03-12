@@ -58,7 +58,7 @@ export default function YouMayAlsoLike() {
     message: string;
     type: "success" | "error";
   } | null>(null);
-  
+
   // Use refs to prevent multiple fetches
   const hasFetchedCart = useRef(false);
   const hasFetchedWishlist = useRef(false);
@@ -80,7 +80,7 @@ export default function YouMayAlsoLike() {
       hasFetchedCart.current = true;
       dispatch(fetchCart());
     }
-    
+
     if (!hasFetchedWishlist.current) {
       hasFetchedWishlist.current = true;
       dispatch(fetchWishlist());
@@ -274,7 +274,6 @@ export default function YouMayAlsoLike() {
     }
   };
 
- 
   if (error || recommendedProducts.length === 0) {
     return null;
   }
@@ -367,16 +366,14 @@ export default function YouMayAlsoLike() {
                               : "Add to wishlist"
                           }
                         >
-                          
-                            <Heart
-                              size={14}
-                              className={
-                                isWishlisted
-                                  ? "fill-red-500 text-red-500"
-                                  : "text-gray-700"
-                              }
-                            />
-                         
+                          <Heart
+                            size={14}
+                            className={
+                              isWishlisted
+                                ? "fill-red-500 text-red-500"
+                                : "text-gray-700"
+                            }
+                          />
                         </button>
                       </div>
                     </Link>
@@ -402,14 +399,12 @@ export default function YouMayAlsoLike() {
                           <button
                             onClick={(e) => handleAddToCart(product, e)}
                             disabled={isCartLoading || cartLoading}
-                            className="w-full flex items-center justify-center gap-2 p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 text-[10px] sm:text-xs font-medium"
+                            className="w-full flex items-center justify-center gap-2 p-1.5 bg-[#1B2559] text-white rounded-lg hover:bg-[#253275] transition-colors disabled:opacity-50 text-[10px] sm:text-xs font-medium"
                           >
-                            
-                              <>
-                                <Trash2 size={14} />
-                                <span>Remove</span>
-                              </>
-                          
+                            <>
+                              <Trash2 size={14} />
+                              <span>Remove from Cart</span>
+                            </>
                           </button>
                         ) : (
                           <button
@@ -417,12 +412,10 @@ export default function YouMayAlsoLike() {
                             disabled={isCartLoading || cartLoading}
                             className="w-full bg-[#5D5FEF] hover:bg-[#4B4DC9] text-white py-1.5 rounded-md font-medium text-[10px] sm:text-xs transition-all duration-300 flex items-center justify-center gap-1 disabled:opacity-50"
                           >
-                            
-                              <>
-                                <ShoppingBag size={14} />
-                                <span>Add to Cart</span>
-                              </>
-                           
+                            <>
+                              <ShoppingBag size={14} />
+                              <span>Add to Cart</span>
+                            </>
                           </button>
                         )}
                       </div>

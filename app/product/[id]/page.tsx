@@ -76,11 +76,11 @@ export default function ProductPage() {
     loading: productLoading,
     error: productError,
   } = useAppSelector((state) => state.product);
-  
+
   const { stats: reviewStats, loading: reviewsLoading } = useAppSelector(
-    (state) => state.reviews
+    (state) => state.reviews,
   );
-  
+
   const { items: wishlistItems, loading: wishlistLoading } = useAppSelector(
     (state) => state.wishlist,
   );
@@ -104,13 +104,13 @@ export default function ProductPage() {
         hasFetchedProduct.current = true;
         dispatch(fetchProductById(productId));
       }
-      
+
       if (!hasFetchedReviews.current) {
         hasFetchedReviews.current = true;
         dispatch(fetchProductReviews(productId));
       }
     }
-    
+
     return () => {
       dispatch(clearProduct());
       // Reset refs when unmounting
@@ -127,13 +127,13 @@ export default function ProductPage() {
         hasFetchedWishlist.current = true;
         dispatch(fetchWishlist());
       }
-      
+
       if (!hasFetchedCart.current) {
         hasFetchedCart.current = true;
         dispatch(fetchCart());
       }
     }
-    
+
     // Reset refs when user logs out
     return () => {
       if (!user) {
@@ -157,9 +157,7 @@ export default function ProductPage() {
   // Update cart state
   useEffect(() => {
     if (product && cartItems.length > 0) {
-      setIsInCart(
-        cartItems.some((item) => item.productId === product._id),
-      );
+      setIsInCart(cartItems.some((item) => item.productId === product._id));
     } else {
       setIsInCart(false);
     }
@@ -459,16 +457,14 @@ export default function ProductPage() {
                     disabled={isLoading}
                     className="absolute top-4 right-4 p-2.5 bg-white rounded-full shadow-lg hover:shadow-xl transition-all z-10 disabled:opacity-50"
                   >
-                    
-                      <Heart
-                        size={20}
-                        className={
-                          isWishlisted
-                            ? "fill-red-500 text-red-500"
-                            : "text-gray-700"
-                        }
-                      />
-                   
+                    <Heart
+                      size={20}
+                      className={
+                        isWishlisted
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-700"
+                      }
+                    />
                   </motion.button>
 
                   {/* Zoom Indicator */}
@@ -558,13 +554,18 @@ export default function ProductPage() {
                       ) : (
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="w-4 h-4 bg-gray-200 rounded animate-pulse" />
+                            <div
+                              key={i}
+                              className="w-4 h-4 bg-gray-200 rounded animate-pulse"
+                            />
                           ))}
                         </div>
                       )}
                     </div>
                     <span className="text-sm text-gray-600">
-                      {reviewStats?.averageRating?.toFixed(1) || "0.0"} out of 5 ({reviewStats?.totalReviews || 0} {reviewStats?.totalReviews === 1 ? 'review' : 'reviews'})
+                      {reviewStats?.averageRating?.toFixed(1) || "0.0"} out of 5
+                      ({reviewStats?.totalReviews || 0}{" "}
+                      {reviewStats?.totalReviews === 1 ? "review" : "reviews"})
                     </span>
                   </div>
                 </div>
@@ -594,14 +595,12 @@ export default function ProductPage() {
                     <button
                       onClick={handleRemoveFromCart}
                       disabled={localCartLoading || cartLoading}
-                      className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 bg-[#1B2559] hover:bg-[#253275] text-white py-3 px-6 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      
-                        <>
-                          <Trash2 size={18} />
-                          Remove from Cart
-                        </>
-                      
+                      <>
+                        <Trash2 size={18} />
+                        Remove from Cart
+                      </>
                     </button>
                   ) : (
                     <button
@@ -609,12 +608,10 @@ export default function ProductPage() {
                       disabled={localCartLoading || cartLoading}
                       className="flex-1 bg-[#5D5FEF] hover:bg-[#4B4DC9] text-white py-3 px-6 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      
-                        <>
-                          <ShoppingBag size={18} />
-                          Add to Cart
-                        </>
-                      
+                      <>
+                        <ShoppingBag size={18} />
+                        Add to Cart
+                      </>
                     </button>
                   )}
 
@@ -627,15 +624,13 @@ export default function ProductPage() {
                         : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
                     }`}
                   >
-                    
-                      <>
-                        <Heart
-                          size={18}
-                          className={isWishlisted ? "fill-red-500" : ""}
-                        />
-                        {isWishlisted ? "Wishlisted" : "Add to Wishlist"}
-                      </>
-                   
+                    <>
+                      <Heart
+                        size={18}
+                        className={isWishlisted ? "fill-red-500" : ""}
+                      />
+                      {isWishlisted ? "Wishlisted" : "Add to Wishlist"}
+                    </>
                   </button>
                 </div>
 
@@ -664,7 +659,10 @@ export default function ProductPage() {
           </div>
 
           {/* Similar Products Section */}
-          <SimilarProducts currentProductId={product._id} category={product.category} />
+          <SimilarProducts
+            currentProductId={product._id}
+            category={product.category}
+          />
         </div>
       </main>
       <Footer />
