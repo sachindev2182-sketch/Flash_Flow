@@ -390,7 +390,7 @@ export default function SimilarProducts({
                         <button
                           onClick={(e) => handleAddToCart(product, e)}
                           disabled={isCartLoading || cartLoading}
-                          className="px-3 py-1.5 bg-[#1B2559] text-white rounded-lg hover:bg-[#253275] transition-colors text-xs font-medium flex items-center gap-1 disabled:opacity-50"
+                          className="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-all duration-300 text-xs font-semibold flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Trash2 size={14} />
                           <span>Remove</span>

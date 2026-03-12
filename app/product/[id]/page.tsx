@@ -441,14 +441,6 @@ export default function ProductPage() {
                     sizes="(max-width: 768px) 100vw, 400px"
                   />
 
-                  {/* In Cart Badge */}
-                  {isInCart && (
-                    <div className="absolute top-4 left-4 bg-[#5D5FEF] text-white text-xs font-bold px-2 py-1 rounded-md z-10 flex items-center gap-1">
-                      <CheckCircle size={12} />
-                      In Cart
-                    </div>
-                  )}
-
                   {/* Wishlist Button */}
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -595,7 +587,7 @@ export default function ProductPage() {
                     <button
                       onClick={handleRemoveFromCart}
                       disabled={localCartLoading || cartLoading}
-                      className="flex-1 bg-[#1B2559] hover:bg-[#253275] text-white py-3 px-6 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 py-3 px-6 rounded-xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <>
                         <Trash2 size={18} />

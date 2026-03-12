@@ -399,7 +399,7 @@ export default function YouMayAlsoLike() {
                           <button
                             onClick={(e) => handleAddToCart(product, e)}
                             disabled={isCartLoading || cartLoading}
-                            className="w-full flex items-center justify-center gap-2 p-1.5 bg-[#1B2559] text-white rounded-lg hover:bg-[#253275] transition-colors disabled:opacity-50 text-[10px] sm:text-xs font-medium"
+                            className="w-full flex items-center justify-center gap-2 p-1.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] sm:text-xs font-semibold"
                           >
                             <>
                               <Trash2 size={14} />
