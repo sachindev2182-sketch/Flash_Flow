@@ -22,7 +22,11 @@ const CategoryCard = memo(({ title, imagePath, href, index }: CategoryCardProps)
       whileHover={{ y: -6 }}
       className="group cursor-pointer flex-none w-[160px] sm:w-[180px]"
     >
-      <Link href={`/shop?category=${title.toLowerCase().replace(' & living', '')}`}>
+      <Link 
+        href={`/shop?category=${title.toLowerCase().replace(' & living', '')}`}
+        prefetch={true}
+        className="block"
+      >
         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl shadow-md hover:shadow-xl transition-all duration-300">
           <Image
             src={imagePath}

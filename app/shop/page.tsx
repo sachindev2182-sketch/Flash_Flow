@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,10 +14,10 @@ import {
   Star,
   Heart,
   ShoppingBag,
-  ChevronLeft,
   Loader2,
   Check,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import {
@@ -33,7 +33,7 @@ import {
 import Navbar from "@/components/home/Navbar";
 import Footer from "@/components/Footer";
 import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 // Category data with subcategories
 const categoryData = {
@@ -90,6 +90,17 @@ export default function ShopPage() {
     subcategory: true,
     price: true,
   });
+  const [initialCategorySet, setInitialCategorySet] = useState(false);
+  
+  // Refs to track initial load and previous filter values
+  const isInitialMount = useRef(true);
+  const prevFilterValues = useRef({
+    category: null as string | null,
+    subcategories: [] as string[],
+    priceRange: [0, 100000] as [number, number],
+    sortBy: null as string | null,
+    page: 1,
+  });
 
   const {
     selectedCategory,
@@ -103,34 +114,86 @@ export default function ShopPage() {
     pagination,
   } = useAppSelector((state) => state.categoryFilter);
 
-  // Get initial category from URL
+  // Function to check if any filter has changed (excluding page)
+  const hasFiltersChanged = () => {
+    const prev = prevFilterValues.current;
+    return (
+      prev.category !== selectedCategory ||
+      JSON.stringify(prev.subcategories) !== JSON.stringify(selectedSubcategories) ||
+      prev.priceRange[0] !== priceRange[0] ||
+      prev.priceRange[1] !== priceRange[1] ||
+      prev.sortBy !== sortBy
+    );
+  };
+
+  // Function to update previous filter values
+  const updatePrevFilterValues = () => {
+    prevFilterValues.current = {
+      category: selectedCategory,
+      subcategories: [...selectedSubcategories],
+      priceRange: [...priceRange] as [number, number],
+      sortBy: sortBy,
+      page: pagination.page,
+    };
+  };
+
+  // Scroll to top effect when filters change (excluding page changes)
+  useEffect(() => {
+    // Skip on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Check if filters changed (not page)
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+  }, [selectedCategory, selectedSubcategories, priceRange, sortBy]);
+
+  // Separate effect for page changes - we don't want to scroll on page change automatically
+  useEffect(() => {
+    // Skip on initial mount
+    if (isInitialMount.current) return;
+    
+    // Update previous page value when page changes
+    if (prevFilterValues.current.page !== pagination.page) {
+      prevFilterValues.current.page = pagination.page;
+    }
+  }, [pagination.page]);
+
+  // Get initial category from URL - run this immediately
   useEffect(() => {
     const category = searchParams.get('category');
-    if (category && category !== selectedCategory) {
+    if (category && !initialCategorySet) {
       dispatch(setSelectedCategory(category));
+      setInitialCategorySet(true);
     }
-  }, [searchParams]);
+  }, [searchParams, dispatch, initialCategorySet]);
 
   // Fetch price range when category changes
   useEffect(() => {
-    if (selectedCategory) {
+    if (selectedCategory && initialCategorySet) {
       dispatch(fetchPriceRange(selectedCategory));
-    } else {
+    } else if (initialCategorySet) {
       dispatch(fetchPriceRange(null));
     }
-  }, [selectedCategory, dispatch]);
+  }, [selectedCategory, dispatch, initialCategorySet]);
 
   // Fetch products when filters change
   useEffect(() => {
-    dispatch(fetchFilteredProducts({
-      category: selectedCategory,
-      subcategories: selectedSubcategories,
-      minPrice: priceRange[0],
-      maxPrice: priceRange[1],
-      sortBy,
-      page: pagination.page,
-      limit: pagination.limit,
-    }));
+    if (initialCategorySet) {
+      dispatch(fetchFilteredProducts({
+        category: selectedCategory,
+        subcategories: selectedSubcategories,
+        minPrice: priceRange[0],
+        maxPrice: priceRange[1],
+        sortBy,
+        page: pagination.page,
+        limit: pagination.limit,
+      }));
+    }
   }, [
     selectedCategory,
     selectedSubcategories,
@@ -138,12 +201,17 @@ export default function ShopPage() {
     sortBy,
     pagination.page,
     dispatch,
+    initialCategorySet,
   ]);
 
   // Auth effect
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) setFirebaseUser(user);
+    let mounted = true;
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (!mounted) return;
+
+      // Set firebase user quickly
+      setFirebaseUser(fbUser || null);
 
       try {
         const res = await fetch("/api/auth/me", {
@@ -153,18 +221,22 @@ export default function ShopPage() {
 
         if (res.ok) {
           const data = await res.json();
-          setCustomUser(data.user);
+          if (mounted) setCustomUser(data.user);
         } else {
-          router.push("/login");
+          // don't immediately redirect here — set custom user null and let the UI handle it
+          if (mounted) setCustomUser(null);
         }
       } catch (error) {
-        router.push("/login");
+        if (mounted) setCustomUser(null);
+      } finally {
+        if (mounted) setPageLoading(false);
       }
-
-      setPageLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [router]);
 
   const user = customUser || firebaseUser;
@@ -186,25 +258,52 @@ export default function ShopPage() {
 
   const handlePageChange = (newPage: number) => {
     dispatch(setPage(newPage));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Page change will scroll to top via the ProductsGrid component's scrollIntoView
+    // but we'll also add a small delay to ensure the products are loaded
+    setTimeout(() => {
+      const productsGrid = document.getElementById('products-grid-top');
+      if (productsGrid) {
+        productsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    await fetch("/api/auth/logout", {
+      method: "GET",
+      credentials: "include",
+    });
+    router.replace("/");
+  };
+
+  // Show loading state while initial category is being set
+  if (!initialCategorySet || pageLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 size={48} className="text-[#5D5FEF] animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar user={user} onProfileClick={() => setShowProfile(true)} />
+      <Navbar user={user} onProfileClick={() => setShowProfile(true)} onLogout={handleLogout}/>
 
-      <main className="pt-20 sm:pt-24 pb-12 mt-6 mb-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-6">
+      <main className="pt-20 sm:pt-24 pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 mb-14">
+          {/* Header - Add an ID for scroll target */}
+          <div id="products-grid-top" className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1B2559]">
               {selectedCategory ? categoryData[selectedCategory as keyof typeof categoryData]?.name || 'All Products' : 'All Products'}
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Showing {products.length} of {pagination.total} products
+              {!loading && `Showing ${products.length} of ${pagination.total} products`}
             </p>
           </div>
 
@@ -479,9 +578,27 @@ export default function ShopPage() {
             </AnimatePresence>
 
             {/* Products Grid */}
-            <div className="flex-1">
-              {loading ? (
-                <div className="flex justify-center items-center min-h-[400px]">
+            <div className="flex-1 min-w-0 min-h-[600px] relative">
+                {loading && products.length > 0 && (
+                <div className="absolute inset-0 z-10 bg-gray-50/50 flex justify-center pt-20 backdrop-blur-[1px]">
+                   <Loader2 size={40} className="text-[#5D5FEF] animate-spin" />
+                </div>
+              )}
+              {loading && products.length === 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse">
+                      <div className="aspect-square bg-gray-200" />
+                      <div className="p-3">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                        <div className="h-3 bg-gray-200 rounded w-full mb-2" />
+                        <div className="flex justify-between">
+                          <div className="h-5 bg-gray-200 rounded w-16" />
+                          <div className="h-4 bg-gray-200 rounded w-12" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : products.length === 0 ? (
                 <div className="bg-white rounded-xl p-12 text-center">
@@ -625,7 +742,7 @@ export default function ShopPage() {
               <button
                 onClick={() => {
                   setShowProfile(false);
-                  // Add logout logic here if needed
+                  handleLogout();
                 }}
                 className="w-full py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100"
               >
