@@ -15,14 +15,14 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Chat Button */}
+      {/* Chat Button - Responsive positioning */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleToggle}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-[#5D5FEF] to-[#868CFF] text-white rounded-full shadow-lg hover:shadow-xl transition-shadow z-50 flex items-center justify-center"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-[#5D5FEF] to-[#868CFF] text-white rounded-full shadow-lg hover:shadow-xl transition-shadow z-50 flex items-center justify-center"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -33,7 +33,7 @@ export default function ChatWidget() {
               exit={{ rotate: 90, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <X size={24} />
+              <X size={20} className="sm:w-6 sm:h-6" />
             </motion.div>
           ) : (
             <motion.div
@@ -43,18 +43,18 @@ export default function ChatWidget() {
               exit={{ rotate: -90, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <MessageCircle size={24} />
+              <MessageCircle size={20} className="sm:w-6 sm:h-6" />
             </motion.div>
           )}
         </AnimatePresence>
       </motion.button>
 
-      {/* Unread indicator (optional) */}
+      {/* Unread indicator - Responsive positioning */}
       {!isOpen && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-[4.5rem] right-6 w-2 h-2 bg-green-500 rounded-full z-50"
+          className="fixed bottom-[3.5rem] right-4 sm:bottom-[4.5rem] sm:right-6 w-2 h-2 bg-green-500 rounded-full z-50"
         />
       )}
     </>

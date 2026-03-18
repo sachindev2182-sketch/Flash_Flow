@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev ",
+    "dev": "node server.js ",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node server.js",
     "lint": "eslint"
   },
   "dependencies": {
@@ -34,6 +34,8 @@
     "react-redux": "^9.2.0",
     "recharts": "^3.7.0",
     "redux-thunk": "^3.1.0",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2",
     "stripe": "^20.4.0",
     "uuid": "^13.0.0",
     "yup": "^1.7.1",
@@ -47,6 +49,7 @@
     "@types/nodemailer": "^7.0.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/socket.io-client": "^3.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

@@ -4,7 +4,7 @@ const nextConfig = {
     domains: [
       'res.cloudinary.com', // Add Cloudinary domain
       'localhost',
-      'flash-flow-one.vercel.app'
+      'flash-flow-cyan.vercel.app'
     ],
     // Alternatively, use remotePatterns for more control
     remotePatterns: [
