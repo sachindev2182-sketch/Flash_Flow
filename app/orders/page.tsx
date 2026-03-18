@@ -31,7 +31,7 @@ import {
   IndianRupee,
 } from "lucide-react";
 import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { fetchUserOrders, fetchOrderById, Order } from "@/lib/redux/features/order/orderSlice";
 import Navbar from "@/components/home/Navbar";
@@ -215,12 +215,22 @@ export default function OrdersPage() {
     return "pending";
   };
 
+    const handleLogout = async () => {
+      await signOut(auth);
+      await fetch("/api/auth/logout", {
+        method: "GET",
+        credentials: "include",
+      });
+      router.replace("/");
+    };
+  
+
 
   if (!user) return null;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <Navbar user={user} onProfileClick={() => setShowProfile(true)} />
+      <Navbar user={user} onProfileClick={() => setShowProfile(true)} onLogout={handleLogout}/>
 
       <main className="flex-grow pt-20 sm:pt-24 pb-24 lg:pb-28 mt-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
