@@ -5,10 +5,10 @@ let socket: Socket | null = null;
 export const initializeSocket = (userId?: string): Socket => {
   if (!socket) {
     const socketUrl = process.env.NODE_ENV === 'production'
-      ? 'https://flash-flow-cyan.vercel.app'
+      ? 'https://flash-flow-socket-server.onrender.com'
       : 'http://localhost:3001';
 
-    console.log('🔌 Connecting to socket:', socketUrl);
+    console.log(' Connecting to socket:', socketUrl);
     
     socket = io(socketUrl, {
       transports: ['websocket', 'polling'],

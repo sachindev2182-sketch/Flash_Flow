@@ -49,8 +49,8 @@ const ChatMessage = memo(({ message }: ChatMessageProps) => {
       </div>
 
       {isUser && (
-        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center flex-shrink-0">
-          <User size={12} className="sm:w-4 sm:h-4 text-white" />
+        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
+          <User size={12} className="sm:w-4 sm:h-4 text-indigo-700" />
         </div>
       )}
     </motion.div>
