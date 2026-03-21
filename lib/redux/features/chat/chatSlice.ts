@@ -1,10 +1,18 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 
+export interface ChatButton {
+  label: string;
+  action: string;
+  metadata?: any;
+  icon?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  buttons?: ChatButton[];
   products?: any[];
 }
 
@@ -22,8 +30,16 @@ const initialState: ChatState = {
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Hi there! I\'m your AI shopping assistant. I can help you find products, answer questions about orders, check promo codes, and more! How can I help you today?',
+      content: "Hello! I am your Flash Flow shopping assistant.\n\nPlease select an option below:",
       timestamp: Date.now(),
+      buttons: [
+        { label: 'Shop / Products', action: 'NAV_SHOP', icon: 'ShoppingBag' },
+        { label: 'My Cart', action: 'NAV_CART', icon: 'ShoppingCart' },
+        { label: 'My Orders', action: 'NAV_ORDERS', icon: 'Package' },
+        { label: 'Wishlist', action: 'NAV_WISHLIST', icon: 'Heart' },
+        { label: 'Offers', action: 'NAV_OFFERS', icon: 'Tag' },
+        { label: 'Profile', action: 'NAV_PROFILE', icon: 'User' }
+      ]
     },
   ],
   isOpen: false,
@@ -33,17 +49,24 @@ const initialState: ChatState = {
   typingUsers: [],
 };
 
-// Send message to chat API (keep for fallback)
+export interface SendChatPayload {
+  message?: string;
+  action?: string;
+  metadata?: any;
+  userId?: string;
+  sessionId: string;
+}
+
 export const sendChatMessage = createAsyncThunk(
   'chat/sendMessage',
-  async (message: string, { rejectWithValue }) => {
+  async (payload: SendChatPayload, { rejectWithValue }) => {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -122,6 +145,7 @@ const chatSlice = createSlice({
           id: Date.now().toString(),
           role: 'assistant',
           content: action.payload.response,
+          buttons: action.payload.buttons || [],
           timestamp: Date.now(),
           products: action.payload.products,
         });

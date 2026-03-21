@@ -5,699 +5,637 @@ import PromoCode from '@/models/PromoCode';
 import Order from '@/models/Order';
 import Cart from '@/models/Cart';
 import Wishlist from '@/models/Wishlist';
-import Review from '@/models/Review';
+import User from '@/models/User';
+import Address from '@/models/Address';
+import ChatState from '@/models/ChatState';
 import { cookies } from 'next/headers';
 import { adminAuth } from '@/lib/firebase-admin';
-import User from '@/models/User';
 
-// Define types
-type OrderStatus = 'pending' | 'confirmed' | 'processed' | 'shipped' | 'delivered' | 'cancelled';
-
-interface CartItem {
-  title: string;
-  price: number;
-  quantity: number;
-  category?: string;
-}
-
-interface WishlistItem {
-  title: string;
-  price: number;
-  category?: string;
-  addedAt?: Date;
-}
-
-interface OrderItem {
-  orderId: string;
-  orderStatus: string;
-  totalAmount: number;
-  createdAt: Date;
-}
-
-interface ReviewItem {
-  productId?: { title: string };
-  rating: number;
-  comment: string;
-  createdAt: Date;
-}
-
-interface PromoCodeItem {
-  code: string;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  minOrderAmount: number;
-}
-
-interface ProductItem {
-  _id: any;
-  title: string;
-  price: number;
-  category: string;
-  subcategory?: string;
-  description?: string;
-  isTrending?: boolean;
-  createdAt?: Date;
-  averageRating?: number;
-  reviewCount?: number;
-}
-
-interface GenerateResponseParams {
-  isGreeting: boolean;
-  isHelpQuery: boolean;
-  isCartQuery: boolean;
-  isWishlistQuery: boolean;
-  isOrderQuery: boolean;
-  isReviewQuery: boolean;
-  isPromoQuery: boolean;
-  userId: string | null;
-  cartInfo: {
-    totalItems: number;
-    subtotal: number;
-    items: CartItem[];
-  } | null;
-  wishlistInfo: {
-    totalItems: number;
-    totalValue: number;
-    items: WishlistItem[];
-  } | null;
-  recentOrders: OrderItem[];
-  userReviews: ReviewItem[];
-  products: ProductItem[];
-  promoCodes: PromoCodeItem[];
-  message: string;
-}
+// Reusable action creators
+const createButton = (label: string, action: string, metadata: any = {}, icon?: string) => ({ label, action, metadata, icon });
+const backButton = () => createButton('Back', 'BACK', {}, 'ArrowLeft');
 
 export async function POST(req: NextRequest) {
-  try {
-    await connectDB();
+ try {
+ await connectDB();
+ const { message, action, metadata = {}, userId: passedUserId, sessionId } = await req.json();
 
-    const { message, userId: passedUserId } = await req.json();
-    console.log('[API] Message received:', message.substring(0, 100));
+ // Determine user ID
+ const token = (await cookies()).get('authToken')?.value;
+ let userId = passedUserId || null;
+ let user = null;
+ 
+ if (!userId && token) {
+ try {
+ const decoded = await adminAuth.verifySessionCookie(token, true);
+ user = await User.findOne({ email: decoded.email });
+ if (user) {
+ userId = user._id.toString();
+ }
+ } catch (err) {
+ console.log('Token auth failed');
+ }
+ }
 
-    if (!message) {
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      );
-    }
+ const sessionKey = userId || sessionId || 'anonymous-session';
 
-    // Get user from auth token
-    const token = (await cookies()).get('authToken')?.value;
-    let userId = passedUserId || null;
-    let user = null;
-    
-    if (!userId && token) {
-      try {
-        const decoded = await adminAuth.verifySessionCookie(token, true);
-        user = await User.findOne({ email: decoded.email });
-        if (user) {
-          userId = user._id.toString();
-        }
-      } catch (err) {
-        console.log('Token auth failed');
-      }
-    }
+ // Retrieve or initialize ChatState
+ let chatState = await ChatState.findOne({ userId: sessionKey });
+ if (!chatState) {
+ chatState = await ChatState.create({
+ userId: sessionKey,
+ step: 'MAIN_MENU',
+ history: [],
+ metadata: {}
+ });
+ }
 
-    const lowerMessage = message.toLowerCase();
-    
-    // Define all query types
-    const isGreeting = ['hi', 'hello', 'hey', 'hii', 'greetings', 'good morning', 'good afternoon', 'good evening'].some((k: string) => lowerMessage.includes(k));
-    const isHelpQuery = ['help', 'what can you', 'how to', 'guide', 'what do you do', 'capabilities', 'features'].some((k: string) => lowerMessage.includes(k));
-    
-    const isCartQuery = ['cart', 'my cart', 'shopping cart', 'bag', 'my bag', 'items in cart', 'cart items', 'cart total', 'checkout'].some((k: string) => lowerMessage.includes(k));
-    const isWishlistQuery = ['wishlist', 'my wishlist', 'favorites', 'saved items', 'save for later', 'favorite items', 'liked products'].some((k: string) => lowerMessage.includes(k));
-    const isOrderQuery = ['order', 'orders', 'track', 'delivery', 'shipping', 'return', 'cancel', 'my order', 'order status', 'where is my order'].some((k: string) => lowerMessage.includes(k));
-    const isReviewQuery = ['review', 'reviews', 'rating', 'ratings', 'feedback', 'testimonial', 'top rated', 'best rated'].some((k: string) => lowerMessage.includes(k));
-    const isPromoQuery = ['promo', 'coupon', 'discount', 'offer', 'offers', 'deal', 'sale'].some((k: string) => lowerMessage.includes(k));
+ // Handle initial greeting or forced resets
+ const isReset = message?.toLowerCase() === 'reset' || message?.toLowerCase() === 'hi' || message?.toLowerCase() === 'hello';
+ if (isReset || (!action && !message) || action === 'RESET') {
+ chatState.step = 'MAIN_MENU';
+ chatState.history = [];
+ chatState.metadata = {};
+ await chatState.save();
+ return NextResponse.json(await renderStep(chatState, userId));
+ }
 
-    // Fetch data based on query type
-    let cartInfo: {
-      totalItems: number;
-      subtotal: number;
-      items: CartItem[];
-    } | null = null;
-    
-    let wishlistInfo: {
-      totalItems: number;
-      totalValue: number;
-      items: WishlistItem[];
-    } | null = null;
-    
-    let recentOrders: OrderItem[] = [];
-    let userReviews: ReviewItem[] = [];
-    let products: ProductItem[] = [];
-    let promoCodes: PromoCodeItem[] = [];
+ // Process Action
+ if (action === 'BACK') {
+ if (chatState.history.length > 0) {
+ const previousStep = chatState.history.pop();
+ chatState.step = previousStep;
+ // Optional: you could save a snapshot of metadata in history, but for simplicity, we keep it as is.
+ } else {
+ chatState.step = 'MAIN_MENU';
+ }
+ await chatState.save();
+ return NextResponse.json(await renderStep(chatState, userId));
+ }
 
-    // Fetch cart data
-    if (isCartQuery && userId) {
-      const cart = await Cart.findOne({ userId }).lean();
-      if (cart?.items?.length) {
-        const cartItems = cart.items || [];
-        const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-        
-        cartInfo = {
-          totalItems: cartItems.length,
-          subtotal: subtotal,
-          items: cartItems.slice(0, 5).map((item: any) => ({
-            title: item.title,
-            price: item.price,
-            quantity: item.quantity,
-          })),
-        };
-      }
-    }
+ // Process custom actions by dispatching to the step handler
+ await processStepAction(chatState, action, metadata, userId);
+ 
+ // Save updated state and return rendered view
+ await chatState.save();
+ return NextResponse.json(await renderStep(chatState, userId));
 
-    // Fetch wishlist data
-    if (isWishlistQuery && userId) {
-      const wishlist = await Wishlist.findOne({ userId }).lean();
-      if (wishlist?.items?.length) {
-        const wishlistItems = wishlist.items || [];
-        const totalValue = wishlistItems.reduce((sum: number, item: any) => sum + item.price, 0);
-        
-        wishlistInfo = {
-          totalItems: wishlistItems.length,
-          totalValue: totalValue,
-          items: wishlistItems.slice(0, 5).map((item: any) => ({
-            title: item.title,
-            price: item.price,
-          })),
-        };
-      }
-    }
-
-    // Fetch orders
-    if (isOrderQuery && userId) {
-      const orders = await Order.find({ userId })
-        .sort({ createdAt: -1 })
-        .limit(5)
-        .lean();
-      
-      recentOrders = orders.map((order: any) => ({
-        orderId: order.orderId,
-        orderStatus: order.orderStatus,
-        totalAmount: order.totalAmount,
-        createdAt: order.createdAt,
-      }));
-    }
-
-    // Fetch reviews
-    if (isReviewQuery && userId) {
-      const reviews = await Review.find({ userId })
-        .sort({ createdAt: -1 })
-        .populate('productId', 'title')
-        .limit(5)
-        .lean();
-      
-      userReviews = reviews.map((review: any) => ({
-        productId: review.productId,
-        rating: review.rating,
-        comment: review.comment,
-        createdAt: review.createdAt,
-      }));
-    }
-
-    // Fetch promo codes
-    if (isPromoQuery) {
-      promoCodes = await PromoCode.find({
-        isActive: true,
-        startDate: { $lte: new Date() },
-        expiryDate: { $gt: new Date() },
-      }).limit(5).lean();
-    }
-
-    // Search for products (if not a special query)
-    if (!isGreeting && !isHelpQuery && !isCartQuery && !isWishlistQuery && !isOrderQuery && !isReviewQuery && !isPromoQuery) {
-      // Extract search terms
-      const searchTerms = lowerMessage.split(' ');
-      
-      // Price range detection
-      const priceMatch = message.match(/(?:under|below|less than|budget of|max)\s*₹?\s*(\d+)/i);
-      const priceRangeMatch = message.match(/(?:between|from)\s*₹?\s*(\d+)\s*(?:to|and)\s*₹?\s*(\d+)/i);
-
-      // Category detection
-      const categoryKeywords: Record<string, string[]> = {
-        men: ['men', 'male', 'man', 'gentleman', 'boy'],
-        women: ['women', 'woman', 'female', 'lady', 'girl'],
-        kids: ['kids', 'child', 'children', 'baby', 'toddler', 'infant'],
-        beauty: ['beauty', 'makeup', 'cosmetic', 'skincare', 'haircare', 'fragrance', 'perfume'],
-        home: ['home', 'furniture', 'decor', 'kitchen', 'electronics', 'gadget', 'book']
-      };
-
-      // Subcategory keywords mapping (from chat-processor.ts)
-      const subcategoryKeywords: Record<string, string[]> = {
-        // Men subcategories
-        'clothing': ['clothing', 'shirt', 't-shirt', 'jeans', 'pant', 'jacket', 'hoodie', 'sweater'],
-        'footwear': ['shoe', 'footwear', 'sneaker', 'boot', 'sandal', 'loafer', 'slipper'],
-        'sports': ['sports', 'gym', 'workout', 'training', 'athletic', 'sportswear'],
-        'accessories': ['accessories', 'watch', 'belt', 'cap', 'hat', 'sunglass', 'wallet'],
-        
-        // Women subcategories
-        'jewelery': ['jewelry', 'jewellery', 'necklace', 'earring', 'ring', 'bracelet'],
-        
-        // Kids subcategories
-        'boys': ['boys', 'boy'],
-        'girls': ['girls', 'girl'],
-        'toys': ['toy', 'games', 'play', 'fun'],
-        
-        // Home subcategories
-        'home decor': ['decor', 'decoration', 'vase', 'lamp', 'wall art'],
-        'furnishing': ['furniture', 'sofa', 'chair', 'table', 'bed', 'mattress'],
-        'kitchen': ['kitchen', 'cookware', 'utensil', 'appliance'],
-        'groceries': ['grocery', 'food', 'snack', 'drink'],
-        'electronics': ['electronic', 'laptop', 'phone', 'tv', 'camera', 'speaker'],
-        'gadgets': ['gadget', 'smart', 'device'],
-        'books': ['book', 'novel', 'reading'],
-        
-        // Beauty subcategories
-        'makeup': ['makeup', 'lipstick', 'foundation', 'eyeshadow'],
-        'skincare': ['skin', 'cream', 'lotion', 'moisturizer'],
-        'haircare': ['hair', 'shampoo', 'conditioner'],
-        'fragrance': ['fragrance', 'perfume', 'cologne']
-      };
-
-      // Build search query
-      const query: any = {};
-      
-      // Price filters
-      if (priceMatch) {
-        query.price = { $lte: parseInt(priceMatch[1]) };
-      }
-      
-      if (priceRangeMatch) {
-        const minPrice = parseInt(priceRangeMatch[1]);
-        const maxPrice = parseInt(priceRangeMatch[2]);
-        query.price = { $gte: minPrice, $lte: maxPrice };
-      }
-
-      // Check for category mentions
-      for (const [category, keywords] of Object.entries(categoryKeywords)) {
-        if (keywords.some((keyword: string) => lowerMessage.includes(keyword))) {
-          query.category = category;
-          break;
-        }
-      }
-
-      // Check for subcategory mentions
-      const matchedSubcategories: string[] = [];
-      for (const [subcategory, keywords] of Object.entries(subcategoryKeywords)) {
-        if (keywords.some((keyword: string) => lowerMessage.includes(keyword))) {
-          matchedSubcategories.push(subcategory);
-        }
-      }
-
-      // Build text search query
-      const searchableTerms = searchTerms
-        .filter((term: string) => term.length > 2)
-        .filter((term: string) => !['show', 'find', 'get', 'me', 'looking', 'for', 'want', 'need', 'under', 'below', 'less', 'than', 'between', 'from', 'to', 'and', 'please', 'can', 'you', 'tell'].includes(term));
-
-      // Create search conditions
-      const searchConditions: any[] = [];
-
-      // Add subcategory matches if found
-      if (matchedSubcategories.length > 0) {
-        searchConditions.push({ subcategory: { $in: matchedSubcategories } });
-      }
-
-      // Add text search if there are searchable terms
-      if (searchableTerms.length > 0) {
-        const textSearch = searchableTerms.join(' ');
-        searchConditions.push({
-          $or: [
-            { title: { $regex: textSearch, $options: 'i' } },
-            { description: { $regex: textSearch, $options: 'i' } },
-            { subcategory: { $regex: textSearch, $options: 'i' } },
-          ]
-        });
-      }
-
-      // Combine search conditions with OR
-      if (searchConditions.length > 0) {
-        query.$or = searchConditions;
-      }
-
-      // Get products
-      products = await Product.find(query)
-        .sort({ isTrending: -1, isNewArrival: -1, createdAt: -1 })
-        .limit(8)
-        .lean();
-
-      // If no products found, try a more lenient search
-      if (products.length === 0) {
-        const lenientQuery: any = {};
-        
-        // Keep price filters if they exist
-        if (query.price) {
-          lenientQuery.price = query.price;
-        }
-        
-        // Try to find any products in the same category or with similar keywords
-        if (query.category) {
-          lenientQuery.category = query.category;
-        }
-        
-        // Try to find products by any searchable term
-        if (searchableTerms.length > 0) {
-          const textSearch = searchableTerms.join(' ');
-          lenientQuery.$or = [
-            { title: { $regex: textSearch, $options: 'i' } },
-            { description: { $regex: textSearch, $options: 'i' } },
-            { category: { $regex: textSearch, $options: 'i' } },
-          ];
-        }
-        
-        products = await Product.find(lenientQuery)
-          .sort({ isTrending: -1, createdAt: -1 })
-          .limit(5)
-          .lean();
-      }
-
-      // Get review stats for products
-      if (products.length > 0) {
-        const productIds = products.map(p => p._id);
-        const reviewStats = await Review.aggregate([
-          { $match: { productId: { $in: productIds } } },
-          {
-            $group: {
-              _id: '$productId',
-              averageRating: { $avg: '$rating' },
-              reviewCount: { $sum: 1 }
-            }
-          }
-        ]);
-
-        // Create a map of review stats
-        const reviewMap = new Map();
-        reviewStats.forEach((stat: any) => {
-          reviewMap.set(stat._id.toString(), {
-            rating: stat.averageRating.toFixed(1),
-            count: stat.reviewCount
-          });
-        });
-
-        // Add review stats to products
-        products = products.map((p: any) => ({
-          ...p,
-          averageRating: reviewMap.get(p._id.toString())?.rating,
-          reviewCount: reviewMap.get(p._id.toString())?.count
-        }));
-      }
-    }
-
-    // Generate response based on query type
-    const response = generateResponse({
-      isGreeting,
-      isHelpQuery,
-      isCartQuery,
-      isWishlistQuery,
-      isOrderQuery,
-      isReviewQuery,
-      isPromoQuery,
-      userId,
-      cartInfo,
-      wishlistInfo,
-      recentOrders,
-      userReviews,
-      products,
-      promoCodes,
-      message
-    });
-
-    return NextResponse.json({
-      response,
-      isAuthenticated: !!userId,
-      data: {
-        ...(cartInfo && { cart: cartInfo }),
-        ...(wishlistInfo && { wishlist: wishlistInfo }),
-        ...(products.length && { products }),
-        ...(recentOrders.length && { orders: recentOrders }),
-        ...(userReviews.length && { reviews: userReviews }),
-        ...(promoCodes.length && { promoCodes })
-      }
-    });
-
-  } catch (error) {
-    console.error(' [API] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+ } catch (error) {
+ console.error(' [API] Error:', error);
+ return NextResponse.json(
+ { error: 'Internal server error', response: 'Sorry, something went wrong on our end.' },
+ { status: 500 }
+ );
+ }
 }
 
-function generateResponse(params: GenerateResponseParams): string {
-  const { 
-    isGreeting, isHelpQuery, isCartQuery, isWishlistQuery, isOrderQuery, 
-    isReviewQuery, isPromoQuery, userId, cartInfo, wishlistInfo, 
-    recentOrders, userReviews, products, promoCodes, message 
-  } = params;
-
-  // Greeting
-  if (isGreeting) {
-    return `👋 Hello! I'm your Flash Flow shopping assistant. I can help you with:
-• 🔍 Finding products (e.g., "show me shoes under ₹2000", "find men's shirts")
-• 🛒 Your shopping cart (e.g., "what's in my cart?")
-• ❤️ Your wishlist (e.g., "show my wishlist")
-• 📦 Orders (e.g., "track my order")
-• ⭐ Reviews (e.g., "show reviews")
-• 🏷️ Promo codes (e.g., "any offers?")
-
-How can I help you today?`;
-  }
-
-  // Help
-  if (isHelpQuery) {
-    return `🤖 **I can help you with:**
-
-**Products** 
-• Find items by name, category, or price
-• Search by subcategory (shirts, shoes, electronics, etc.)
-
-**Your Account**
-• View your cart 🛒
-• Check your wishlist ❤️
-• Track orders 📦
-
-**Information**
-• Read reviews ⭐
-• Find promo codes 🏷️
-`;
-  }
-
-  // Cart query
-  if (isCartQuery) {
-    if (!userId) {
-      return `🛒 **Cart Information**
-
-Please log in to your account to view your cart.
-
-You can log in by clicking the profile icon in the top right corner.
-
-After logging in, you'll be able to:
-• View items in your cart
-• Check total price
-• Proceed to checkout
-• Apply promo codes`;
-    }
-
-    if (!cartInfo || cartInfo.totalItems === 0) {
-      return `🛒 **Your Cart is Empty**
-
-You haven't added any items to your cart yet.
-
-Here's what you can do:
-• Browse our categories: Men, Women, Kids, Beauty
-• Check out trending products
-• Add items you like to cart
-
-Would you like me to show you some popular products?`;
-    }
-
-    const itemList = cartInfo.items.map((item: CartItem) => 
-      `• **${item.title}** - ₹${item.price} x ${item.quantity} = ₹${item.price * item.quantity}`
-    ).join('\n');
-
-    return `🛒 **Your Shopping Cart**
-
-${itemList}
-
-${cartInfo.totalItems > 5 ? `\n*... and ${cartInfo.totalItems - 5} more items*\n` : ''}
-
-**Cart Summary:**
-• Total Items: ${cartInfo.totalItems}
-• Subtotal: ₹${cartInfo.subtotal}
-
-💰 Free shipping on orders above ₹5,000!`;
-  }
-
-  // Wishlist query
-  if (isWishlistQuery) {
-    if (!userId) {
-      return `❤️ **Wishlist Information**
-
-Please log in to your account to view your wishlist.
-
-After logging in, you can:
-• Save items you like
-• Move items to cart
-• Get price drop alerts`;
-    }
-
-    if (!wishlistInfo || wishlistInfo.totalItems === 0) {
-      return `❤️ **Your Wishlist is Empty**
-
-You haven't added any items to your wishlist yet.
-
-Browse our products and click the heart icon ❤️ to save your favorites!
-
-Would you like me to show you some popular products?`;
-    }
-
-    const itemList = wishlistInfo.items.map((item: WishlistItem) => 
-      `• **${item.title}** - ₹${item.price}`
-    ).join('\n');
-
-    return `❤️ **Your Wishlist**
-
-${itemList}
-
-${wishlistInfo.totalItems > 5 ? `\n*... and ${wishlistInfo.totalItems - 5} more items*\n` : ''}
-
-**Summary:**
-• Total Items: ${wishlistInfo.totalItems}
-• Total Value: ₹${wishlistInfo.totalValue}
-
-Ready to buy? You can move items to your cart!`;
-  }
-
-  // Order query
-  if (isOrderQuery) {
-    if (!userId) {
-      return `📦 **Order Information**
-
-Please log in to your account to view your orders.
-
-After logging in, you can:
-• Track your orders
-• Check delivery status
-• View order history
-• Request returns`;
-    }
-
-    if (recentOrders.length === 0) {
-      return `📦 **No Orders Yet**
-
-You haven't placed any orders with us yet.
-
-Start shopping to see your orders here! Would you like me to show you some products?`;
-    }
-
-    const orderList = recentOrders.map((order: OrderItem) => {
-      const statusEmoji: Record<string, string> = {
-        pending: '⏳',
-        confirmed: '✅',
-        processed: '🔄',
-        shipped: '📦',
-        delivered: '🎉',
-        cancelled: '❌'
-      };
-      const emoji = statusEmoji[order.orderStatus] || '📋';
-      
-      return `${emoji} **Order #${order.orderId}**\n   Status: ${order.orderStatus}\n   Amount: ₹${order.totalAmount}\n   Date: ${new Date(order.createdAt).toLocaleDateString()}`;
-    }).join('\n\n');
-
-    return `📦 **Your Recent Orders**
-
-${orderList}`;
-  }
-
-  // Review query
-  if (isReviewQuery) {
-    if (!userId) {
-      return `⭐ **Review Information**
-
-Please log in to your account to view your reviews.
-
-After purchasing products, you can:
-• Share your experience
-• Rate products
-• Help other customers`;
-    }
-
-    if (userReviews.length === 0) {
-      return `📝 **No Reviews Yet**
-
-You haven't written any reviews yet.
-
-After receiving your orders, you can share your experience and help other customers!
-
-Check your orders page to review purchased items.`;
-    }
-
-    const avgRating = (userReviews.reduce((sum: number, r: ReviewItem) => sum + r.rating, 0) / userReviews.length).toFixed(1);
-    
-    const reviewList = userReviews.map((r: ReviewItem) => 
-      `• **${r.productId?.title || 'Product'}**: ${'⭐'.repeat(r.rating)} - "${r.comment.substring(0, 50)}${r.comment.length > 50 ? '...' : ''}"`
-    ).join('\n');
-
-    return `📝 **Your Reviews**
-
-You've written ${userReviews.length} reviews with an average rating of ${avgRating} ⭐
-
-${reviewList}`;
-  }
-
-  // Promo query
-  if (isPromoQuery) {
-    if (promoCodes.length === 0) {
-      return `🏷️ **Active Offers**
-
-There are no active promo codes at the moment.
-
-But don't worry! We regularly add new offers. Check back soon or:
-• Browse our sale section
-• Sign up for newsletters
-• Follow us on social media`;
-    }
-
-    const promoList = promoCodes.map((p: PromoCodeItem) => 
-      `• **${p.code}**: ${p.discountType === 'percentage' ? p.discountValue + '%' : '₹' + p.discountValue} off\n  Min order: ₹${p.minOrderAmount}`
-    ).join('\n\n');
-
-    return `🎉 **Available Offers**
-
-${promoList}
-
-Copy the code and apply at checkout!`;
-  }
-
-  // Product search results
-  if (products.length > 0) {
-    const productList = products.map((p: ProductItem, i: number) => {
-      const reviewText = p.averageRating ? ` ⭐ ${p.averageRating} (${p.reviewCount} reviews)` : '';
-      return `${i+1}. **${p.title}** - ₹${p.price}${reviewText}\n   📁 ${p.category}${p.subcategory ? ` - ${p.subcategory}` : ''}`;
-    }).join('\n\n');
-
-    return `✨ **Products you might like**
-
-${productList}
-
-${products.length === 8 ? '\n*Showing top 8 results*' : ''}
-`;
-  }
-
-  // Default response for no matches
-  return `I couldn't find specific products matching "${message}".
-
-Here's what you can try:
-• 🔍 Use specific keywords (e.g., "shirts", "shoes", "laptops", "perfume")
-• 💰 Specify a price range (e.g., "under ₹2000", "between ₹1000 and ₹5000")
-• 📁 Browse by category (Men, Women, Kids, Beauty, Home)
-• 🔎 Search by subcategory (e.g., "jeans", "sneakers", "skincare", "furniture")
-
-Or ask me about:
-• Your orders 📦
-• Reviews ⭐
-• Promo codes 🏷️
-
-How can I help you?`;
+// ---------------------------------------------------------------------------
+// Action Processor
+// ---------------------------------------------------------------------------
+async function processStepAction(state: any, action: string, metadata: any, userId: string | null) {
+ // Navigation away from MAIN_MENU
+ if (state.step === 'MAIN_MENU') {
+ state.history.push('MAIN_MENU');
+ if (action === 'NAV_SHOP') state.step = 'SHOP_CATEGORY';
+ else if (action === 'NAV_CART') state.step = 'CART_VIEW';
+ else if (action === 'NAV_ORDERS') state.step = 'ORDERS_VIEW';
+ else if (action === 'NAV_PROFILE') state.step = 'PROFILE_VIEW';
+ else if (action === 'NAV_WISHLIST') state.step = 'WISHLIST_VIEW';
+ else if (action === 'NAV_OFFERS') state.step = 'OFFERS_VIEW';
+ return;
+ }
+
+ // Shop Flow
+ if (state.step === 'SHOP_CATEGORY') {
+ if (action === 'SELECT_CATEGORY') {
+ state.history.push(state.step);
+ state.step = 'PRODUCT_LIST';
+ state.metadata = { category: metadata.category };
+ }
+ return;
+ }
+
+ if (state.step === 'PRODUCT_LIST') {
+ if (action === 'SELECT_PRODUCT') {
+ state.history.push(state.step);
+ state.step = 'PRODUCT_DETAILS';
+ state.metadata = { ...state.metadata, productId: metadata.productId };
+ }
+ return;
+ }
+
+ if (state.step === 'PRODUCT_DETAILS') {
+ if (action === 'ADD_TO_CART') {
+ if (!userId) throw new Error("Need Login");
+ const cart = await Cart.findOne({ userId });
+ if (cart) {
+ const product = await Product.findById(state.metadata.productId);
+ if (product) {
+ const itemIndex = cart.items.findIndex((item: any) => item.productId.toString() === state.metadata.productId);
+ if (itemIndex > -1) {
+ cart.items[itemIndex].quantity += 1;
+ } else {
+ cart.items.push({
+ productId: product._id,
+ title: product.title,
+ price: product.price,
+ image: product.image || '',
+ quantity: 1,
+ description: product.description || 'No description',
+ category: product.category ? product.category.toLowerCase() : 'men',
+ addedAt: new Date(),
+ } as any);
+ }
+ const pIdStr = product._id.toString();
+ if (!cart.selectedItems) cart.selectedItems = [];
+ if (!cart.selectedItems.includes(pIdStr)) {
+ cart.selectedItems.push(pIdStr);
+ }
+ await cart.save();
+ }
+ }
+ state.metadata.message = " Added to cart!";
+ }
+ if (action === 'ADD_TO_WISHLIST') {
+ if (!userId) throw new Error("Need Login");
+ const wishlist = await Wishlist.findOne({ userId });
+ if (wishlist) {
+ const product = await Product.findById(state.metadata.productId);
+ if (product && !wishlist.items.some((item: any) => item.productId.toString() === state.metadata.productId)) {
+ wishlist.items.push({
+ productId: product._id,
+ title: product.title,
+ price: product.price,
+ image: product.image || '',
+ description: product.description || 'No description',
+ category: product.category ? product.category.charAt(0).toUpperCase() + product.category.slice(1).toLowerCase() : 'Men',
+ addedAt: new Date(),
+ } as any);
+ await wishlist.save();
+ }
+ }
+ state.metadata.message = " Added to wishlist!";
+ }
+ if (action === 'REMOVE_FROM_WISHLIST') {
+ if (!userId) throw new Error("Need Login");
+ const wishlist = await Wishlist.findOne({ userId });
+ if (wishlist) {
+ wishlist.items = wishlist.items.filter((item: any) => item.productId.toString() !== state.metadata.productId);
+ await wishlist.save();
+ state.metadata.message = " Removed from wishlist!";
+ }
+ }
+ return;
+ }
+
+ // Cart Flow
+ if (state.step === 'CART_VIEW') {
+ if (action === 'SELECT_CART_ITEM') {
+ state.history.push(state.step);
+ state.step = 'CART_ITEM_DETAILS';
+ state.metadata = { productId: metadata.productId, title: metadata.title };
+ }
+ if (action === 'CHECKOUT') {
+ state.history.push(state.step);
+ state.step = 'CHECKOUT_VIEW';
+ }
+ if (action === 'NAV_OFFERS') {
+ state.history.push(state.step);
+ state.step = 'OFFERS_VIEW';
+ }
+ return;
+ }
+
+ if (state.step === 'CART_ITEM_DETAILS') {
+ const cart = await Cart.findOne({ userId });
+ if (cart) {
+ const itemIndex = cart.items.findIndex((item: any) => item.productId.toString() === state.metadata.productId);
+ if (itemIndex > -1) {
+ if (action === 'INC_QTY') {
+ cart.items[itemIndex].quantity += 1;
+ } else if (action === 'DEC_QTY') {
+ if (cart.items[itemIndex].quantity > 1) {
+ cart.items[itemIndex].quantity -= 1;
+ }
+ } else if (action === 'REMOVE_ITEM') {
+ cart.items.splice(itemIndex, 1);
+ state.metadata.message = " Item removed.";
+ state.step = state.history.pop() || 'CART_VIEW'; // Return to cart
+ }
+ await cart.save();
+ }
+ }
+ return;
+ }
+
+ // Orders Flow
+ if (state.step === 'ORDERS_VIEW') {
+ if (action === 'SELECT_ORDER') {
+ state.history.push(state.step);
+ state.step = 'ORDER_DETAILS';
+ state.metadata = { ...state.metadata, orderId: metadata.orderId };
+ }
+ return;
+ }
+
+ if (state.step === 'ORDER_DETAILS') {
+ if (action === 'TRACK_ORDER') {
+ state.metadata.message = " Tracking info: Out for delivery.";
+ }
+ if (action === 'INITIATE_CANCEL') {
+ state.history.push(state.step);
+ state.step = 'CONFIRM_CANCEL';
+ }
+ return;
+ }
+
+ if (state.step === 'CONFIRM_CANCEL') {
+ if (action === 'CANCEL_ORDER_CONFIRMED') {
+ const order = await Order.findOne({ orderId: state.metadata.orderId, userId });
+ if (order && ['pending', 'processing', 'confirmed'].includes(order.orderStatus.toLowerCase())) {
+ order.orderStatus = 'cancelled';
+ await order.save();
+ state.step = 'COMPLETED_CANCEL';
+ } else {
+ state.metadata.message = " Could not cancel order. It may have already been shipped or processed.";
+ state.step = state.history.pop() || 'ORDER_DETAILS';
+ }
+ }
+ if (action === 'CANCEL_ABORT') {
+ state.step = state.history.pop() || 'ORDER_DETAILS';
+ }
+ return;
+ }
+
+ if (state.step === 'COMPLETED_CANCEL') {
+ if (action === 'NAV_ORDERS') {
+ state.step = 'ORDERS_VIEW';
+ }
+ return;
+ }
+
+ // Profile Flow
+ if (state.step === 'PROFILE_VIEW') {
+ if (action === 'MANAGE_ADDRESS') {
+ state.history.push(state.step);
+ state.step = 'ADDRESS_VIEW';
+ }
+ return;
+ }
+
+ // Wishlist Flow
+ if (state.step === 'WISHLIST_VIEW') {
+ if (action === 'SELECT_WISHLIST_ITEM') {
+ state.history.push(state.step);
+ state.step = 'WISHLIST_ITEM_DETAILS';
+ state.metadata = { productId: metadata.productId };
+ }
+ return;
+ }
+
+ if (state.step === 'WISHLIST_ITEM_DETAILS') {
+ const wishlist = await Wishlist.findOne({ userId });
+ if (action === 'REMOVE_ITEM') {
+ if (wishlist) {
+ wishlist.items = wishlist.items.filter((item: any) => item.productId.toString() !== state.metadata.productId);
+ await wishlist.save();
+ state.step = state.history.pop() || 'WISHLIST_VIEW';
+ }
+ }
+ if (action === 'MOVE_TO_CART') {
+ const cart = await Cart.findOne({ userId });
+ const product = await Product.findById(state.metadata.productId);
+ if (cart && product) {
+ cart.items.push({
+ productId: product._id,
+ title: product.title,
+ price: product.price,
+ image: product.image || '',
+ quantity: 1,
+ description: product.description || 'No description',
+ category: product.category ? product.category.toLowerCase() : 'men',
+ addedAt: new Date(),
+ } as any);
+ const pIdStr = product._id.toString();
+ if (!cart.selectedItems) cart.selectedItems = [];
+ if (!cart.selectedItems.includes(pIdStr)) {
+ cart.selectedItems.push(pIdStr);
+ }
+ await cart.save();
+ // Remove from wishlist
+ if (wishlist) {
+ wishlist.items = wishlist.items.filter((item: any) => item.productId.toString() !== state.metadata.productId);
+ await wishlist.save();
+ }
+ state.metadata.message = " Moved to cart!";
+ state.step = state.history.pop() || 'WISHLIST_VIEW';
+ }
+ }
+ return;
+ }
+
+ // Offers Flow
+ if (state.step === 'OFFERS_VIEW') {
+ if (action === 'APPLY_PROMO') {
+ state.metadata.message = ` Promo code ${metadata.code} copied and ready for checkout!`;
+ }
+ return;
+ }
+}
+
+// ---------------------------------------------------------------------------
+// View Renderer
+// ---------------------------------------------------------------------------
+async function renderStep(state: any, userId: string | null) {
+ let responseText = '';
+ let buttons: any[] = [];
+ let productsData: any[] = []; // Optional extra data
+
+ // Provide contextual feedback
+ if (state.metadata?.message) {
+ responseText += `${state.metadata.message}\n\n`;
+ state.metadata.message = null; // Clear banner
+ }
+
+ switch (state.step) {
+ case 'MAIN_MENU':
+ responseText += " Hello! I am your Flash Flow shopping assistant.\n\nPlease select an option below:";
+ buttons = [
+ createButton('Shop / Products', 'NAV_SHOP', {}, 'ShoppingBag'),
+ createButton('My Cart', 'NAV_CART', {}, 'ShoppingCart'),
+ createButton('My Orders', 'NAV_ORDERS', {}, 'Package'),
+ createButton('Wishlist', 'NAV_WISHLIST', {}, 'Heart'),
+ createButton('Offers', 'NAV_OFFERS', {}, 'Tag'),
+ createButton('Profile', 'NAV_PROFILE', {}, 'User'),
+ ];
+ break;
+
+ case 'SHOP_CATEGORY':
+ responseText += "**Shop**\nSelect a category to explore:";
+ buttons = [
+ createButton('Men', 'SELECT_CATEGORY', { category: 'men' }, 'Shirt'),
+ createButton('Women', 'SELECT_CATEGORY', { category: 'women' }, 'UserRound'),
+ createButton('Kids', 'SELECT_CATEGORY', { category: 'kids' }, 'Smile'),
+ createButton('Beauty', 'SELECT_CATEGORY', { category: 'beauty' }, 'Sparkles'),
+ createButton('Home', 'SELECT_CATEGORY', { category: 'home' }, 'Home'),
+ backButton(),
+ ];
+ break;
+
+ case 'PRODUCT_LIST':
+ const products = await Product.find({ category: state.metadata.category }).limit(5).lean() as any[];
+ if (products.length === 0) {
+ responseText += `No products found in ${state.metadata.category}.`;
+ } else {
+ responseText += ` Top products in **${state.metadata.category}**:\n\n`;
+ products.forEach((p, i) => {
+ responseText += `${i+1}. **${p.title}** - ₹${p.price}\n`;
+ });
+ buttons = products.map((p) => createButton(`View ${p.title.substring(0,15)}...`, 'SELECT_PRODUCT', { productId: p._id.toString() }));
+ }
+ buttons.push(backButton());
+ break;
+
+ case 'PRODUCT_DETAILS':
+ const product = await Product.findById(state.metadata.productId).lean() as any;
+ if (!product) {
+ responseText += "Product not found.";
+ } else {
+ responseText += `**${product.title}**\n Price: ₹${product.price}\n Category: ${product.category}\n\n${product.description || ''}`;
+ 
+ let isInWishlist = false;
+ if (userId) {
+ const wList = await Wishlist.findOne({ userId }).lean();
+ if (wList && wList.items && wList.items.some((i: any) => i.productId.toString() === state.metadata.productId)) {
+ isInWishlist = true;
+ }
+ }
+ 
+ buttons = [
+ createButton('Add to Cart', 'ADD_TO_CART', {}, 'ShoppingCart'),
+ isInWishlist 
+ ? createButton('Remove from Wishlist', 'REMOVE_FROM_WISHLIST', {}, 'Trash2') 
+ : createButton('Add to Wishlist', 'ADD_TO_WISHLIST', {}, 'Heart'),
+ ];
+ }
+ buttons.push(backButton());
+ break;
+
+ case 'CART_VIEW':
+ if (!userId) {
+ responseText += "Please log in to view your cart.";
+ buttons = [backButton()];
+ break;
+ }
+ const cart = await Cart.findOne({ userId }).lean();
+ if (!cart || !cart.items || cart.items.length === 0) {
+ responseText += " Your cart is currently empty.";
+ } else {
+ responseText += `**Your Cart Summary**\nTotal items: ${cart.items.length}\n\n`;
+ let subtotal = 0;
+ cart.items.forEach((item: any) => {
+ if (cart.selectedItems.includes(item.productId.toString())) {
+ subtotal += item.price * item.quantity;
+ }
+ responseText += `• ${item.title} (x${item.quantity}) - ₹${item.price * item.quantity}\n`;
+ buttons.push(createButton(`Edit ${item.title.substring(0, 15)}`, 'SELECT_CART_ITEM', { productId: item.productId.toString(), title: item.title }));
+ });
+
+ const calculateDiscounts = (st: number) => {
+ let discountAmount = 0;
+ if (st >= 5000) discountAmount = 500;
+ else if (st >= 3000) discountAmount = 300;
+ else if (st >= 2000) discountAmount = 150;
+ else if (st >= 1000) discountAmount = 50;
+
+ if (st >= 4000 && st < 5000) {
+ const percentageDiscount = st * 0.1;
+ if (percentageDiscount > discountAmount) {
+ discountAmount = percentageDiscount;
+ }
+ }
+ return discountAmount;
+ };
+
+ const discountAmount = calculateDiscounts(subtotal);
+ const deliveryCharge = subtotal > 5000 ? 0 : (subtotal > 0 ? 99 : 0);
+ const total = subtotal - discountAmount + deliveryCharge;
+
+ responseText += `\n**Subtotal:** ₹${subtotal.toFixed(2)}\n**Discount:** -₹${discountAmount.toFixed(2)}\n**Delivery:** ₹${deliveryCharge.toFixed(2)}\n**Total:** ₹${total.toFixed(2)}\n`;
+
+ buttons.push(createButton('Proceed to Checkout', 'CHECKOUT', {}, 'CreditCard'));
+ buttons.push(createButton('Apply Promo', 'NAV_OFFERS', {}, 'Tag'));
+ }
+ buttons.push(backButton());
+ break;
+
+ case 'CART_ITEM_DETAILS':
+ const cartLookup = await Cart.findOne({ userId }).lean();
+ const item = cartLookup?.items.find((i: any) => i.productId.toString() === state.metadata.productId);
+ if (!item) {
+ responseText += "Item no longer in cart.";
+ } else {
+ responseText += `**Editing Item:**\n${item.title}\nQuantity: ${item.quantity}\nPrice: ₹${item.price * item.quantity}`;
+ buttons = [
+ createButton('Increase', 'INC_QTY', {}, 'Plus'),
+ createButton('Decrease', 'DEC_QTY', {}, 'Minus'),
+ createButton('Remove', 'REMOVE_ITEM', {}, 'Trash2'),
+ ];
+ }
+ buttons.push(backButton());
+ break;
+
+ case 'CHECKOUT_VIEW':
+ responseText += "**Checkout**\nThis bot currently helps with navigation. To finalize your payment securely, please click the Cart icon at the top of the webpage and complete the checkout process.";
+ buttons = [backButton()];
+ break;
+
+ case 'ORDERS_VIEW':
+ if (!userId) {
+ responseText += "Please log in to view your orders.";
+ buttons = [backButton()];
+ break;
+ }
+ const orders = await Order.find({ userId }).sort({ createdAt: -1 }).limit(5).lean() as any[];
+ if (orders.length === 0) {
+ responseText += " You have no recent orders.";
+ buttons.push(backButton());
+ } else {
+ responseText += "**Recent Orders:**\nPlease select an order from the list below:\n\n";
+ orders.forEach(o => {
+ const productNames = o.items.map((i: any) => i.title).join(', ');
+ responseText += `• **#${o.orderId}**\n Products: ${productNames}\n Status: ${o.orderStatus.toUpperCase()}\n\n`;
+ buttons.push(createButton(`Select #${o.orderId}`, 'SELECT_ORDER', { orderId: o.orderId }));
+ });
+ buttons.push(backButton());
+ buttons.push(createButton('Main Menu', 'RESET', {}, 'Home'));
+ }
+ break;
+
+ case 'ORDER_DETAILS':
+ const order = await Order.findOne({ orderId: state.metadata.orderId, userId }).lean();
+ if (!order) {
+ responseText += "Order not found.";
+ buttons.push(backButton());
+ } else {
+ const productNames = order.items.map((i: any) => i.title).join(', ');
+ responseText += `**Order Details:**\n\n**ID:** #${order.orderId}\n**Products:** ${productNames}\n**Status:** ${order.orderStatus.toUpperCase()}\n**Total:** ₹${order.totalAmount}\n**Placed on:** ${new Date(order.createdAt).toLocaleDateString()}`;
+ 
+ const isEligible = ['pending', 'processing', 'confirmed'].includes(order.orderStatus.toLowerCase());
+ 
+ buttons.push(createButton('Track Order', 'TRACK_ORDER', {}, 'Truck'));
+ if (isEligible) {
+ buttons.push(createButton('Cancel Order', 'INITIATE_CANCEL', {}, 'X'));
+ } else {
+ responseText += "\n\n *This order cannot be cancelled because it is already shipped, delivered, or previously cancelled.*";
+ }
+ buttons.push(backButton());
+ buttons.push(createButton('Main Menu', 'RESET', {}, 'Home'));
+ }
+ break;
+
+ case 'CONFIRM_CANCEL':
+ responseText += `**Are you sure you want to cancel Order #${state.metadata.orderId}?**\n\nThis action cannot be undone.`;
+ buttons = [
+ createButton('Yes, Cancel Order', 'CANCEL_ORDER_CONFIRMED', {}, 'Check'),
+ createButton('No, Go Back', 'CANCEL_ABORT', {}, 'X'),
+ ];
+ break;
+
+ case 'COMPLETED_CANCEL':
+ responseText += `**Your order #${state.metadata.orderId} has been successfully cancelled.**\nRefund will be processed shortly (if applicable).`;
+ buttons = [
+ createButton('Back to Orders', 'NAV_ORDERS', {}, 'Package'),
+ createButton('Main Menu', 'RESET', {}, 'Home'),
+ ];
+ break;
+
+ case 'PROFILE_VIEW':
+ if (!userId) {
+ responseText += "Please log in to view your profile.";
+ buttons = [backButton()];
+ break;
+ }
+ const userDoc = await User.findById(userId).lean() as any;
+ if (!userDoc) {
+ responseText += "User profile not found.";
+ buttons = [backButton()];
+ } else {
+ responseText += `**Your Profile**\n\n**Name:** ${userDoc.name}\n**Email:** ${userDoc.email}\n**Member Since:** ${new Date(userDoc.createdAt).toLocaleDateString()}\n`;
+ buttons = [
+ createButton('Address', 'MANAGE_ADDRESS', {}, 'Home'),
+ backButton(),
+ ];
+ }
+ break;
+
+ case 'ADDRESS_VIEW':
+ if (!userId) {
+ responseText += "Please log in to view your address.";
+ buttons = [backButton()];
+ break;
+ }
+ const defaultAddress = await Address.findOne({ userId, isDefault: true }).lean() as any;
+ if (!defaultAddress) {
+ responseText += "**Your Address**\n\nYou don't have a default address saved yet. Please go to the Manage Addresses page on the web dashboard to add one securely.";
+ } else {
+ responseText += `**Your Default Address:**\n\n**${defaultAddress.fullName}**\n${defaultAddress.houseNumber}, ${defaultAddress.street}\n${defaultAddress.city}, ${defaultAddress.state} - ${defaultAddress.pincode}\n📞 ${defaultAddress.phoneNumber}\n\n*(To edit your address, please go to the Manage Addresses Page).*`;
+ }
+ buttons = [backButton()];
+ break;
+
+ case 'WISHLIST_VIEW':
+ if (!userId) {
+ responseText += "Please log in to view your wishlist.";
+ buttons = [backButton()];
+ break;
+ }
+ const wishlistLookup = await Wishlist.findOne({ userId }).lean();
+ if (!wishlistLookup || !wishlistLookup.items || wishlistLookup.items.length === 0) {
+ responseText += " Your wishlist is empty.";
+ } else {
+ responseText += "**Your Wishlist**\n\n";
+ wishlistLookup.items.forEach((item: any) => {
+ responseText += `• ${item.title} - ₹${item.price}\n`;
+ buttons.push(createButton(`Select ${item.title.substring(0, 12)}`, 'SELECT_WISHLIST_ITEM', { productId: item.productId.toString() }));
+ });
+ }
+ buttons.push(backButton());
+ break;
+
+ case 'WISHLIST_ITEM_DETAILS':
+ responseText += " Options for your saved item:";
+ buttons = [
+ createButton('Move to Cart', 'MOVE_TO_CART', {}, 'ShoppingCart'),
+ createButton('Remove', 'REMOVE_ITEM', {}, 'Trash2'),
+ backButton()
+ ];
+ break;
+
+ case 'OFFERS_VIEW':
+ const promos = await PromoCode.find({ isActive: true }).limit(3).lean() as any[];
+ if (promos.length === 0) {
+ responseText += " No active offers currently.";
+ } else {
+ responseText += "**Available Promos:**\n\n";
+ promos.forEach(p => {
+ responseText += `• **${p.code}** : ${p.discountType === 'percentage' ? p.discountValue + '%' : '₹' + p.discountValue} off\n`;
+ buttons.push(createButton(`Apply ${p.code}`, 'APPLY_PROMO', { code: p.code }));
+ });
+ }
+ buttons.push(backButton());
+ break;
+
+ default:
+ responseText += "I am not sure how to handle this step.";
+ buttons = [backButton()];
+ break;
+ }
+
+ return {
+ response: responseText.trim(),
+ buttons,
+ data: { products: productsData },
+ isAuthenticated: !!userId
+ };
 }
